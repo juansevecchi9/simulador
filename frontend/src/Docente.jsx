@@ -16,13 +16,23 @@ export function IngresoDocente({ onIngreso, volver }) {
     try { onIngreso({ ...(await api.ingresoDocente(codigo.trim())), codigo: codigo.trim().toUpperCase() }) } catch (err) { setError(err.message) }
   }
   return (
-    <form className="tarjeta" onSubmit={enviar} noValidate>
-      <h1>Panel docente</h1>
-      <p className="sub">Ingresá con el código de acceso de tu curso.</p>
-      <label>Código de acceso<input value={codigo} onChange={(e) => { setCodigo(e.target.value); setError('') }} placeholder="ABCD2026" /></label>
-      {error && <p className="error">{error}</p>}
-      <button className="primario">Ingresar</button>
-      <button type="button" className="link" onClick={volver}>Volver</button>
+    <form className="pase pase-docente" onSubmit={enviar} noValidate>
+      <div className="pase-cabecera">
+        <span className="pase-marca">Torre de control</span>
+        <h1>Panel docente</h1>
+        <p>Seguí el recorrido de tu curso mes a mes.</p>
+      </div>
+      <div className="pase-cuerpo">
+        <label className="campo campo-ancho">Código de acceso del curso
+          <input value={codigo} onChange={(e) => { setCodigo(e.target.value); setError('') }} placeholder="ABCD2026" autoCapitalize="characters" />
+        </label>
+      </div>
+      <div className="pase-corte" aria-hidden="true" />
+      <div className="pase-talon">
+        {error && <p className="error">{error}</p>}
+        <button className="primario">Ver mi curso</button>
+        <button type="button" className="link" onClick={volver}>Volver</button>
+      </div>
     </form>
   )
 }
@@ -53,10 +63,14 @@ export function Panel({ sesion, onSalir }) {
 
   return (
     <div className="panel">
-      <div className="panel-top">
-        <div><h1>{sesion.nombre}</h1><span className="sub">{general.cantidad_alumnos} alumnos</span></div>
-        <button className="link" onClick={onSalir}>Salir</button>
-      </div>
+      <header className="panel-top">
+        <div>
+          <span className="panel-marca">Torre de control</span>
+          <h1>{sesion.nombre}</h1>
+          <span className="panel-sub">{general.cantidad_alumnos} alumnos en el recorrido</span>
+        </div>
+        <button className="salir" onClick={onSalir}>Salir</button>
+      </header>
       <nav className="tabs">
         <button className={vista.nivel === 1 ? 'activo' : ''} onClick={() => setVista({ nivel: 1 })}>Curso</button>
         <button className={vista.nivel === 2 || vista.nivel === 3 ? 'activo' : ''} onClick={() => setVista({ nivel: 2 })}>Temas</button>
@@ -94,9 +108,12 @@ function Nivel1({ g, irAlumno }) {
         <div className="mini"><b>{g.estados.no_inicio || 0}</b><span>No iniciaron</span></div>
       </div>
       <p className="seccion">Alumnos que necesitan intervención</p>
+      {!g.alumnos.some((a) => a.franja === 'necesitan_intervencion') && (
+        <p className="ayuda">Ningún alumno está por debajo del 40% de decisiones acertadas.</p>
+      )}
       {g.alumnos.filter((a) => a.franja === 'necesitan_intervencion').map((a) => (
         <button key={a.dni} className="fila-alumno" onClick={() => irAlumno(a.dni)}>
-          <span>{a.nombre}</span><small>Criterio {Math.round(a.criterio_financiero_pct)}% · {Math.round(a.finalizacion_pct)}% del recorrido</small>
+          <span className="iniciales">{a.nombre.slice(0, 2)}</span><span className="nombre">{a.nombre}</span><small>Criterio {Math.round(a.criterio_financiero_pct)}% · {Math.round(a.finalizacion_pct)}% del recorrido</small>
         </button>
       ))}
     </>
@@ -165,7 +182,7 @@ function Nivel4({ cursoId, codigo, alumnos, dni, elegir }) {
   if (!dni) {
     return alumnos.map((a) => (
       <button key={a.dni} className="fila-alumno" onClick={() => elegir(a.dni)}>
-        <span>{a.nombre}</span>
+        <span className={`iniciales ${a.franja || ""}`}>{a.nombre.slice(0, 2)}</span><span className="nombre">{a.nombre}</span>
         <small>{a.decisiones ? `Criterio ${Math.round(a.criterio_financiero_pct)}% · ${Math.round(a.finalizacion_pct)}% del recorrido` : 'No inició'}</small>
       </button>
     ))

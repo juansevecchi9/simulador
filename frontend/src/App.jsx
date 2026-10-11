@@ -35,13 +35,19 @@ export default function App() {
   return (
     <main className="app">
       {pantalla === 'inicio' && (
-        <div className="tarjeta">
-          <img src="/icon.svg" alt="" width="56" height="56" />
-          <h1>Viaje de egresados</h1>
-          <p className="sub">Un simulador para practicar decisiones financieras durante 12 meses.</p>
-          <button className="primario" onClick={() => setPantalla('ingreso')}>Soy alumno</button>
-          <button className="secundario" onClick={() => setPantalla('docente')}>Soy docente</button>
-        </div>
+        <section className="portada">
+          <img src="/icon.svg" alt="" width="64" height="64" />
+          <h1>Tu viaje de egresados empieza con tu plata</h1>
+          <p>Doce meses, veinticuatro decisiones y una meta: llegar al viaje sin hundirte en deudas.</p>
+          <div className="boletos">
+            <button className="boleto" onClick={() => setPantalla('ingreso')}>
+              <b>Soy alumno</b><span>Jugar el recorrido</span>
+            </button>
+            <button className="boleto boleto-docente" onClick={() => setPantalla('docente')}>
+              <b>Soy docente</b><span>Ver el panel del curso</span>
+            </button>
+          </div>
+        </section>
       )}
       {pantalla === 'ingreso' && <IngresoAlumno onIngreso={irSegunVista} volver={() => setPantalla('inicio')} />}
       {pantalla === 'personaje' && <ElegirPersonaje dni={vista.estudiante.dni} onElegido={irSegunVista} />}

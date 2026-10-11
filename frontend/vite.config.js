@@ -19,7 +19,7 @@ export default defineConfig({
         start_url: '/',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg}'], maximumFileSizeToCacheInBytes: 4_000_000 },
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'], maximumFileSizeToCacheInBytes: 4_000_000 },
     }),
   ],
   server: { proxy: { '/api': 'http://127.0.0.1:8000' } },

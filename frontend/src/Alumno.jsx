@@ -51,15 +51,29 @@ export function IngresoAlumno({ onIngreso, volver }) {
   }
 
   return (
-    <form className="tarjeta" onSubmit={enviar} noValidate>
-      <h1>Viaje de egresados</h1>
-      <p className="sub">Ingresá con tus datos. Si ya empezaste, seguís donde lo dejaste.</p>
-      <label>DNI<input inputMode="numeric" value={dni} onChange={(e) => { setDni(e.target.value); setError('') }} placeholder="45123456" /></label>
-      <label>Nombre<input value={nombre} onChange={(e) => { setNombre(e.target.value); setError('') }} placeholder="Juana" /></label>
-      <label>Código de curso<input inputMode="numeric" value={curso} onChange={(e) => { setCurso(e.target.value); setError('') }} placeholder="1001" /></label>
-      {error && <p className="error">{error}</p>}
-      <button className="primario" disabled={cargando}>{cargando ? 'Ingresando…' : 'Ingresar'}</button>
-      <button type="button" className="link" onClick={volver}>Volver</button>
+    <form className="pase" onSubmit={enviar} noValidate>
+      <div className="pase-cabecera">
+        <span className="pase-marca">Pase de embarque</span>
+        <h1>Tu viaje de egresados</h1>
+        <p>Si ya empezaste, seguís donde lo dejaste.</p>
+      </div>
+      <div className="pase-cuerpo">
+        <label className="campo campo-ancho">Nombre
+          <input value={nombre} onChange={(e) => { setNombre(e.target.value); setError('') }} placeholder="Juana" autoComplete="given-name" />
+        </label>
+        <label className="campo">DNI
+          <input inputMode="numeric" value={dni} onChange={(e) => { setDni(e.target.value); setError('') }} placeholder="45123456" />
+        </label>
+        <label className="campo">Curso
+          <input inputMode="numeric" value={curso} onChange={(e) => { setCurso(e.target.value); setError('') }} placeholder="1001" />
+        </label>
+      </div>
+      <div className="pase-corte" aria-hidden="true" />
+      <div className="pase-talon">
+        {error && <p className="error">{error}</p>}
+        <button className="primario" disabled={cargando}>{cargando ? 'Embarcando…' : 'Empezar a jugar'}</button>
+        <button type="button" className="link" onClick={volver}>Volver</button>
+      </div>
     </form>
   )
 }
