@@ -40,7 +40,7 @@ export default function Cartera({ items, compacta = false }) {
   }
   return (
     <section className="cartera" aria-label="Tu cartera: lo que tenés y lo que debés">
-      <div className="cartera-titulo"><Emo e="💼" size={18} /><b>Tu cartera</b>{resumen}<small>en pesos de hoy</small></div>
+      <div className="cartera-titulo"><Emo e="💼" size={18} /><b>Tu cartera</b>{resumen}</div>
       {lista}
     </section>
   )

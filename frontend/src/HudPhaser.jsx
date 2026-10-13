@@ -98,10 +98,11 @@ class HudEscena extends Phaser.Scene {
       const tx = this.texto(0, 0, `${sube ? '+' : ''}${f(r)}`, t.chico ? 10 : 12, sube ? '#1a7a4c' : '#a32d2d', '800').setOrigin(1, 0)
       const fondo = this.add.graphics().fillStyle(sube ? 0xd9f2e3 : 0xfcebeb, 1)
         .fillRoundedRect(-tx.width - 6, -1, tx.width + 12, tx.height + 2, 8)
-      t.chip.add([fondo, tx.setX(0)]).setPosition(t.x + t.w - t.pad - 6, t.pad + (t.chico ? 0 : 2))
+      // En pantallas anchas el cambio va en el renglon de abajo, a la derecha; en celular, arriba.
+      t.chip.add([fondo, tx.setX(0)]).setPosition(t.x + t.w - t.pad - 6, t.chico ? t.pad : t.yBarra + 15)
+      t.anchoChip = tx.width + 16
       t.chip.setScale(0.6).setAlpha(0)
       this.tweens.add({ targets: t.chip, scale: 1, alpha: 1, duration: 380, ease: 'Back.out' })
-      if (t.etiqueta && t.etiqueta.x + t.etiqueta.width > t.chip.x - tx.width - 10) t.etiqueta.setText(t.etiqueta.text.split(' ')[0])
     })
   }
 
@@ -109,7 +110,7 @@ class HudEscena extends Phaser.Scene {
     if (!this.tiles) return
     this.recortar = () => this.tiles.forEach((t) => {
       if (!t.ayuda) return
-      const max = t.w - t.pad * 2
+      const max = t.w - t.pad * 2 - (t.anchoChip || 0)
       let txt = t.ayuda.text
       while (t.ayuda.width > max && txt.length > 4) { txt = txt.slice(0, -2); t.ayuda.setText(`${txt.trimEnd()}…`) }
     })

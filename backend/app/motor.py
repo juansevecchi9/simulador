@@ -5,16 +5,15 @@ reproduciendo sus decisiones sobre los parametros globales y la inflacion
 mensual. Asi el resultado es siempre consistente con el contenido
 parametrizado y con el registro de decisiones.
 
-Todos los montos se expresan en pesos de hoy (poder de compra de enero): el
-sueldo, los gastos fijos y la cuota del viaje valen lo mismo todos los meses, y
-la inflacion achica en cada cierre todo lo que esta en pesos.
+El sueldo, los gastos fijos, la cuota del viaje y las deudas quedan fijos en
+pesos. La inflacion le saca poder de compra a lo que tenes en pesos (tu plata,
+tus inversiones y lo que te deben): en cada cierre vale 2% menos.
 
 Cartera: ademas del efectivo, cada decision puede crear posiciones que
 evolucionan mes a mes segun sus condiciones:
   - inversion: rinde su tasa mensual, vence a su plazo y vuelve al efectivo;
     las liquidas se pueden rescatar para pagar la cuota del viaje.
-  - deuda en cuotas: se paga en los meses pactados (cuotas nominales fijas,
-    valuadas en pesos de hoy).
+  - deuda en cuotas: se paga en los meses pactados (cuotas fijas en pesos).
   - deuda abierta (tarjeta, descubierto): crece con la tasa mensual y se
     cancela sola al cierre con lo que sobra despues de la cuota del viaje.
   - a cobrar: plata que alguien te debe y entra en el mes pactado.
@@ -278,8 +277,9 @@ def aplicar_opcion(estado: Estado, op: OpcionMotor, inflacion: dict | None = Non
             estado.efectivo -= x
             pos.valor += x
         elif t == "prestamo":
+            # Las deudas quedan fijas en pesos: la inflacion no las achica (el sueldo tampoco sube).
             estado.efectivo += o.get("recibido", 0)
-            pagos = [(mes + k, n / _factor(inflacion, mes, k), n) for k, n in enumerate(o["cuotas"], start=1)]
+            pagos = [(mes + k, n, n) for k, n in enumerate(o["cuotas"], start=1)]
             estado.nueva(tipo="deuda_cuotas", nombre=o["nombre"], emoji=o.get("emoji", "🤝"), pagos=pagos,
                          detalle=o.get("detalle", ""))
         elif t == "a_cobrar":
@@ -290,12 +290,12 @@ def aplicar_opcion(estado: Estado, op: OpcionMotor, inflacion: dict | None = Non
         elif t == "compra":
             k, n = o["en_meses"], o["monto"]
             estado.nueva(tipo="compra", nombre=o["nombre"], emoji=o.get("emoji", "🛒"),
-                         pagos=[(mes + k, n / _factor(inflacion, mes, k), n)], detalle=o.get("detalle", ""))
+                         pagos=[(mes + k, n, n)], detalle=o.get("detalle", ""))
         elif t == "refinanciar":
             # Tomar un prestamo, cancelar la deuda abierta (mas cara) e invertir lo que sobra.
             recibido = o["recibido"]
             estado.efectivo += recibido
-            pagos = [(mes + k, n / _factor(inflacion, mes, k), n) for k, n in enumerate(o["cuotas"], start=1)]
+            pagos = [(mes + k, n, n) for k, n in enumerate(o["cuotas"], start=1)]
             estado.nueva(tipo="deuda_cuotas", nombre=o["nombre"], emoji="🏦", pagos=pagos, detalle=o.get("detalle", ""))
             cancelado = estado.cancelar_deuda_abierta(recibido)
             estado.efectivo -= cancelado
@@ -348,7 +348,7 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
             estado.efectivo += pago[1]
             c.pagos.remove(pago)
             movs.append(mov(c, "cobro", pago[1], f"Cobraste {pesos_txt(pago[2])}" + (
-                f" (en pesos de hoy, {pesos_txt(pago[1])})" if abs(pago[2] - pago[1]) >= 1 else "")))
+                f": con los precios más altos, compran lo que antes {pesos_txt(pago[1])}" if abs(pago[2] - pago[1]) >= 1 else "")))
         if not c.pagos:
             estado.posiciones.remove(c)
 
@@ -360,7 +360,7 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
             if es_compra:
                 compras += pago[1]
             estado.pagar(pago[1], d.nombre.lower() if es_compra else f"la cuota de {d.nombre.lower()}", d)
-            texto = f"Pagaste {pesos_txt(pago[2])}" + (f" (en pesos de hoy, {pesos_txt(pago[1])})" if abs(pago[2] - pago[1]) >= 1 else "")
+            texto = f"Pagaste {pesos_txt(pago[2])}"
             movs.append(mov(d, "compra" if es_compra else "pago", -pago[1], texto))
         if not d.pagos:
             estado.posiciones.remove(d)
@@ -407,11 +407,12 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
                          "texto": f"Con lo que te sobró pagaste {pesos_txt(cancelado)} de deuda"
                          + (" y la cancelaste" if not estado.de_tipo("deuda_abierta") else "")})
 
-    # 7. Inflacion: achica todo lo que esta en pesos (lo que tenes y lo que debes).
+    # 7. Inflacion: lo que tenes en pesos (plata e inversiones) compra menos. Lo que
+    # debes queda fijo en pesos, igual que el sueldo: la inflacion no lo achica.
     f = 1 + inflacion
     pn_antes = estado.patrimonio_neto()
     estado.efectivo /= f
-    for x in estado.de_tipo("inversion", "deuda_abierta"):
+    for x in estado.de_tipo("inversion"):
         x.valor /= f
     perdida = pn_antes - estado.patrimonio_neto()
 

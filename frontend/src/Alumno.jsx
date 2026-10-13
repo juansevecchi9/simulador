@@ -211,7 +211,7 @@ function InicioMes({ esc, economia, barras, cartera = [] }) {
         <li><Emo e="✈️" size={20} /><span>Se paga {atrasadas ? `la cuota y ${atrasadas} atrasada${atrasadas > 1 ? 's' : ''}` : 'la cuota del viaje'}, si te alcanza</span><b>{pesos(cuota)}</b></li>
         {delMes.map((x) => <li key={x.id} className={x.tipo === 'a_cobrar' || x.tipo === 'inversion' ? 'sube' : 'baja'}><Emo e={x.emoji} size={20} /><span>{x.nombre}: {x.detalle.charAt(0).toLowerCase() + x.detalle.slice(1)}</span><b /></li>)}
         {abierta && <li className="baja"><Emo e="💳" size={20} /><span>Tu deuda de tarjeta suma {economia.tasa_deuda_abierta_pct}% de interés; lo que te sobre la va cancelando</span><b>+{pesos(Math.round(abierta.valor * economia.tasa_deuda_abierta_pct / 100))}</b></li>}
-        <li><Emo e="🏷️" size={20} /><span>Los precios suben {economia.inflacion_mensual_pct}%: lo que está en pesos vale {economia.inflacion_mensual_pct}% menos</span><b>-{economia.inflacion_mensual_pct}%</b></li>
+        <li><Emo e="🏷️" size={20} /><span>Los precios suben {economia.inflacion_mensual_pct}%: tu plata e inversiones en pesos compran {economia.inflacion_mensual_pct}% menos</span><b>-{economia.inflacion_mensual_pct}%</b></li>
       </ul>
     </div>
   )
@@ -304,6 +304,14 @@ function CascadaMes({ c }) {
 
 /** Parte un texto largo en parrafos cortos (una idea por parrafo). */
 function Parrafos({ texto }) {
+  // Si el texto trae renglones (cuentas), cada renglon va aparte; si no, se parte por oraciones.
+  if ((texto || '').includes('\n')) {
+    return (
+      <div className="parrafos">
+        {texto.split('\n').map((l, i) => <p key={i} className={/=/.test(l) ? 'cuenta' : ''}>{l}</p>)}
+      </div>
+    )
+  }
   const oraciones = (texto || '').split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])/)
   const grupos = []
   for (const o of oraciones) {
@@ -393,10 +401,8 @@ function Cierre({ c, mesSiguiente, onContinuar, terminado }) {
       </PasoCierre>
       <PasoCierre visible={paso >= 3} emoji="🏷️" titulo="Los precios subieron 2%" tono="warn">
         <p>{c.perdida_inflacion > 0
-          ? `Todo lo que tenés en pesos (tu plata y tus inversiones) compra 2% menos, y lo que debés en pesos también pesa 2% menos. En total, tu patrimonio perdió ${pesos(c.perdida_inflacion)} de poder de compra.`
-          : c.perdida_inflacion < 0
-            ? `Como debés más de lo que tenés en pesos, la inflación achicó tu deuda: tu patrimonio mejoró ${pesos(-c.perdida_inflacion)}. Ojo: los intereses de la deuda son mucho más grandes que eso.`
-            : 'No tenías plata guardada ni deudas en pesos: la inflación no te cambió nada este mes.'}</p>
+          ? `Tu plata y tus inversiones en pesos compran 2% menos: perdiste ${pesos(c.perdida_inflacion)} de poder de compra. Lo que debés sigue siendo la misma cantidad de pesos, igual que tu sueldo.`
+          : 'No tenías plata guardada ni inversiones en pesos: la inflación no te sacó poder de compra este mes.'}</p>
       </PasoCierre>
       <div className={`cierre-acciones ${paso >= 4 ? 'visible' : ''}`}>
         {paso >= 4 && <CascadaMes c={c} />}
@@ -558,9 +564,9 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
             <ul className="reglas">
               <li><Emo e="🍕" size={26} /><span>Trabajás los fines de semana en la <b>{vista.economia.trabajo.nombre}</b>: cobrás {pesos(vista.economia.ingreso_base_mensual)} por mes y pagás {pesos(vista.economia.gastos_fijos_mensuales)} de gastos fijos.</span></li>
               <li><Emo e="🗓️" size={26} /><span>Cada mes tomás <b>dos decisiones</b>. Al cierre, si te alcanza la plata, la cuota del viaje se paga sola.</span></li>
-              <li><Emo e="🏷️" size={26} /><span>Los precios suben <b>{vista.economia.inflacion_mensual_pct}% por mes</b> y el dólar <b>{vista.economia.suba_dolar_mensual_pct}% por mes</b>. Lo que está en pesos vale {vista.economia.inflacion_mensual_pct}% menos cada mes.</span></li>
+              <li><Emo e="🏷️" size={26} /><span>Los precios suben <b>{vista.economia.inflacion_mensual_pct}% por mes</b> y el dólar <b>{vista.economia.suba_dolar_mensual_pct}% por mes</b>. Lo que tengas ahorrado en pesos compra {vista.economia.inflacion_mensual_pct}% menos cada mes.</span></li>
               <li><Emo e="💳" size={26} /><span>La deuda de tarjeta suma <b>{vista.economia.tasa_deuda_abierta_pct}% de interés por mes</b>. Al cierre, lo que te sobra después de la cuota la va cancelando.</span></li>
-              <li><Emo e="💼" size={26} /><span>Tus inversiones y préstamos evolucionan mes a mes: los vas a ver siempre en <b>tu cartera</b>. Todos los montos están en pesos de hoy.</span></li>
+              <li><Emo e="💼" size={26} /><span>Tus inversiones y préstamos evolucionan mes a mes: los vas a ver siempre en <b>tu cartera</b>. Tu sueldo, la cuota y lo que debas quedan fijos en pesos.</span></li>
             </ul>
             <button className="primario" onClick={() => setFase('pregunta')}>Arrancar en enero</button>
           </div>

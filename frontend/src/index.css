@@ -156,7 +156,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
 .porque { background: #fff8e1; border-radius: 16px; padding: 14px 16px; border-left: 5px solid var(--sol); }
 .parrafos { display: flex; flex-direction: column; gap: 10px; }
 .parrafos p { margin: 0; font-size: 15.5px; line-height: 1.55; }
-.porque .parrafos p + p { padding-top: 10px; border-top: 1px dashed rgba(196, 151, 40, .45); }
+.porque .parrafos { gap: 6px; }
+.porque .parrafos p.cuenta { background: rgba(255,255,255,.75); border-radius: 10px; padding: 6px 10px; font-variant-numeric: tabular-nums; border-left: 3px solid var(--sol); }
 
 /* cierre del mes */
 .cierre-titulo { font-size: 22px !important; }
