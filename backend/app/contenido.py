@@ -63,7 +63,7 @@ PARAMETROS = {
     "suba_dolar_mensual": 0.01,
     # Variaciones de ingreso por mes (suman o restan al ingreso base).
     "ingreso_extra_mes_4": 40_000,
-    "ingreso_extra_mes_7": 60_000,
+    "ingreso_extra_mes_7": 0,  # lo que te debe Tano entra por la decision del mes 7
     "ingreso_extra_mes_10": -30_000,
 }
 
@@ -101,14 +101,67 @@ LUGARES = {
 
 NOTA_INGRESO = {
     4: "Este mes, además del sueldo, te regalaron $40.000 por tu cumpleaños.",
-    7: "Este mes cobraste $60.000 extra: Tano te pagó medio aguinaldo.",
     10: "Este mes hubo menos pedidos en la pizzería y cobraste $30.000 menos.",
 }
 
 SEPARADOR_FEEDBACK = "\n\n§\n\n"
 
 
-def _op(texto, da, dd, clasif, eje, consecuencia, explicacion):
+# ---- operaciones que puede generar una opcion (ver motor.py) ----
+def EF(monto):
+    return {"op": "efectivo", "monto": monto}
+
+
+def DEUDA(monto):
+    return {"op": "deuda", "monto": monto}
+
+
+def INV(nombre, emoji, monto, tasa=0.0, meses=None, liquida=False, tasas=None, moneda="pesos", detalle=""):
+    return {"op": "inversion", "nombre": nombre, "emoji": emoji, "monto": monto, "tasa": tasa, "meses": meses,
+            "liquida": liquida, "tasas": tasas, "moneda": moneda, "detalle": detalle}
+
+
+def PRESTAMO(nombre, emoji, cuotas, recibido=0, detalle=""):
+    return {"op": "prestamo", "nombre": nombre, "emoji": emoji, "cuotas": cuotas, "recibido": recibido, "detalle": detalle}
+
+
+def COBRAR(nombre, emoji, pagos, costo=0, detalle=""):
+    return {"op": "a_cobrar", "nombre": nombre, "emoji": emoji, "pagos": pagos, "costo": costo, "detalle": detalle}
+
+
+def COMPRA(nombre, emoji, en_meses, monto):
+    return {"op": "compra", "nombre": nombre, "emoji": emoji, "en_meses": en_meses, "monto": monto}
+
+
+def APORTE(nombre, emoji, monto, tasa):
+    return {"op": "aporte", "nombre": nombre, "emoji": emoji, "monto": monto, "tasa": tasa}
+
+
+def _deltas(ops):
+    """Efecto inmediato de las operaciones en el efectivo y en la deuda abierta."""
+    da = dd = 0
+    for o in ops:
+        t = o["op"]
+        if t == "efectivo":
+            da += o["monto"]
+        elif t == "deuda":
+            dd += o["monto"]
+        elif t == "inversion":
+            da -= o["monto"]
+        elif t == "prestamo":
+            da += o["recibido"]
+        elif t == "a_cobrar":
+            da -= o["costo"]
+        elif t == "aporte":
+            da -= o["monto"]
+        elif t == "refinanciar":
+            dd -= o["recibido"]
+    return da, dd
+
+
+def _op(texto, da, dd, clasif, eje, consecuencia, explicacion, ops=None):
+    if ops is not None:
+        da, dd = _deltas(ops)
     return {
         "texto_opcion": texto,
         "delta_ahorro": da,
@@ -117,6 +170,8 @@ def _op(texto, da, dd, clasif, eje, consecuencia, explicacion):
         "tipo_error": None if clasif == "acertada" else TIPO_ERROR_POR_EJE[eje],
         # Feedback = consecuencia en la historia + explicacion de las tres opciones.
         "mensaje_feedback": consecuencia + SEPARADOR_FEEDBACK + explicacion,
+        # Como evoluciona la decision mes a mes (None = efecto inmediato con los deltas).
+        "ops": ops,
     }
 
 
@@ -132,9 +187,12 @@ def _esc(mes, orden, eje, lugar, personaje, objeto, texto, opciones, explicacion
         "lugar": lugar,
         "personaje": personaje,
         "objeto": objeto,
-        "opciones": [_op(o[0], o[1], o[2], o[3], eje, o[4], explicacion) for o in opciones],
+        "opciones": [_op(o[0], o[1], o[2], o[3], eje, o[4], explicacion, o[5] if len(o) > 5 else None) for o in opciones],
     }
 
+
+# Interes simple del 2,5% sobre $50.000 expresado como rendimiento de cada mes.
+SIMPLE_2_5 = [round(1250 / (50_000 + 1250 * k), 6) for k in range(6)]
 
 ESCENARIOS = [
     # ------------------------------------------------------------- MES 1 (enero)
@@ -162,63 +220,76 @@ ESCENARIOS = [
          "cada línea, comprobar que entre en lo que cobrás y dejar algo para imprevistos."),
     _esc(1, 2, "deuda_credito", "shopping", "tano", "👟",
          "Tano te avisa que para hacer delivery necesitás zapatillas cómodas, porque pasás muchas horas arriba "
-         "de la bici. Las que te sirven cuestan $50.000. Acordate de que los precios suben 2% por mes. "
+         "de la bici. Las que te sirven cuestan $50.000. Acordate de que los precios suben 2% todos los meses. "
          "¿Cómo las pagás?",
          [
-             ("💳 En 2 cuotas sin interés de $25.000, una este mes y otra el que viene.", -48_500, 0, A,
-              "Estrenaste zapatillas y la segunda cuota la pagás con plata que ya vale un poco menos: en pesos de "
-              "hoy te costaron unos $48.500."),
-             ("💵 De contado, con 2% de descuento: pagás $49.000 en el momento.", -49_000, 0, R,
-              "Estrenaste zapatillas pagando $49.000, unos $500 más de lo que te costaban, en pesos de hoy, las "
-              "2 cuotas sin interés."),
-             ("🧾 En 3 cuotas de $18.000, así cada pago te queda más liviano.", -52_000, 0, I,
-              "Estrenaste zapatillas, pero pagás $54.000 en total. Aun con la inflación, te costaron unos $3.500 "
-              "más que en 2 cuotas sin interés."),
+             ("💳 En 2 cuotas sin interés de $25.000, la primera el mes que viene.", 0, 0, A,
+              "Estrenaste zapatillas y vas a pagar las cuotas con plata que, para entonces, vale un poco menos: "
+              "en pesos de hoy te cuestan $48.539.",
+              [PRESTAMO("Cuotas de las zapatillas", "👟", [25_000, 25_000])]),
+             ("💵 De contado, con 2% de descuento: pagás $49.000 en el momento.", 0, 0, R,
+              "Estrenaste zapatillas pagando $49.000: $461 más de lo que te costaban, en pesos de hoy, las 2 "
+              "cuotas sin interés.",
+              [EF(-49_000)]),
+             ("🧾 En 3 cuotas de $18.000, la primera el mes que viene, así cada pago te queda más liviano.",
+              0, 0, I,
+              "Estrenaste zapatillas, pero pagás $54.000 en total. Aun con la inflación, en pesos de hoy te "
+              "cuestan $51.910: $3.371 más que en 2 cuotas sin interés.",
+              [PRESTAMO("Cuotas de las zapatillas", "👟", [18_000, 18_000, 18_000])]),
          ],
-         "Con precios que suben 2% por mes, cada cuota fija vale un poco menos cuando la pagás. Las 2 cuotas "
-         "sin interés equivalen a unos $48.500 de hoy: menos que los $49.000 del contado con 2% de descuento. "
-         "Las 3 cuotas de $18.000 suman $54.000, o sea que tienen $4.000 de interés escondido, y la inflación no "
-         "llega a compensarlo: equivalen a unos $52.000 de hoy. Para comparar formas de pago hay que mirar el "
-         "total y cuánto valen esas cuotas con la inflación."),
+         "Los precios suben 2% todos los meses y se acumula: lo que hoy cuesta $100, el mes que viene cuesta $102 "
+         "y al siguiente $104,04. Por eso una cuota fija vale menos cuanto más tarde la pagás. La cuota de $25.000 "
+         "del mes que viene equivale hoy a $25.000 ÷ 1,02 = $24.510, y la de dentro de dos meses a $25.000 ÷ "
+         "(1,02 × 1,02) = $24.029: en total, $48.539, menos que los $49.000 del contado. Las 3 cuotas de $18.000 "
+         "suman $54.000 ($4.000 de interés escondido) y equivalen a $17.647 + $17.301 + $16.962 = $51.910: la "
+         "inflación no alcanza a compensar ese interés."),
     # ------------------------------------------------------------- MES 2 (febrero)
     _esc(2, 1, "intereses", "bicicleteria", "tano", "🚲",
          "{nombre}, se rompió la bici con la que hacés el delivery y el arreglo sale $50.000. Tano te avisa que "
          "sin bici no podés trabajar el fin de semana. Tenés tres maneras de pagarlo:",
          [
-             ("🐷 Usar tus ahorros, aunque te quede menos colchón por unos meses.", -50_000, 0, A,
-              "La bici quedó como nueva y volviste a repartir ese mismo fin de semana, sin deberle nada a nadie."),
+             ("🐷 Usar tus ahorros, aunque te quede menos colchón por unos meses.", 0, 0, A,
+              "La bici quedó como nueva y volviste a repartir ese mismo fin de semana, sin deberle nada a nadie.",
+              [EF(-50_000)]),
              ("🤝 Pedirle prestado al tío Rubén, que te cobra 10% de interés, y devolverle todo en 1 mes.",
-              -55_000, 0, R,
+              0, 0, R,
               "Volviste a repartir, pero el mes que viene le devolvés $55.000 al tío Rubén: $5.000 más de lo que "
-              "costó el arreglo."),
+              "costó el arreglo.",
+              [EF(-50_000), PRESTAMO("Préstamo del tío Rubén", "🤝", [55_000], recibido=50_000)]),
              ("📱 Usar la app PrestaYa, que te da el primer mes sin interés aunque te cobra $15.000 por darte "
-              "el préstamo.", 0, 65_000, I,
-              "Volviste a repartir, pero le debés $65.000 a PrestaYa. Esa deuda queda abierta y crece 8% cada "
-              "mes hasta que la canceles."),
+              "el préstamo.", 0, 0, I,
+              "Volviste a repartir, pero el mes que viene le tenés que devolver $65.000 a PrestaYa: $15.000 más "
+              "de lo que costó el arreglo.",
+              [EF(-50_000), PRESTAMO("Préstamo de PrestaYa", "📱", [65_000], recibido=50_000)]),
          ],
          "Con tus ahorros el arreglo cuesta $50.000 y no pagás intereses. Con el tío Rubén, el 10% de $50.000 "
          "son $5.000: le devolvés $55.000 en un mes. Con PrestaYa, el primer mes sin interés esconde un cargo de "
-         "$15.000, que sobre $50.000 es un 30% de golpe, y si no la cancelás la deuda sigue creciendo. Si tenés "
-         "la plata, usarla para un gasto necesario suele ser más barato que pedir prestado."),
+         "$15.000, que sobre $50.000 es un 30% de golpe: le devolvés $65.000. Si tenés la plata, usarla para un "
+         "gasto necesario suele ser más barato que pedir prestado."),
     _esc(2, 2, "inflacion", "agencia", "sofi", "✈️",
-         "Tenés guardados $90.000 para la cuota de Bariloche del mes que viene. Los precios suben 2% por mes y "
-         "el dólar, 1% por mes. Pasás por la agencia Egresados Sur y Sofi te cuenta las opciones. ¿Qué hacés "
-         "con esa plata hasta entonces?",
+         "Tenés guardados $90.000 para la cuota de Bariloche, que se paga a fin de mes. Los precios suben 2% por "
+         "mes y el dólar, 1% por mes. Pasás por la agencia Egresados Sur y Sofi te cuenta las opciones. ¿Qué "
+         "hacés con esa plata hasta entonces?",
          [
              ("✈️ Adelantar la cuota ahora, porque la agencia te hace un 5% de descuento si la pagás antes.",
-              4_500, 0, A,
-              "Pagaste la cuota por adelantado y te quedaron $4.500 a favor para el viaje."),
-             ("🏦 Ponerlos en un plazo fijo que paga 1,5% por mes y sacarlos justo para la cuota.", 1_350, 0, R,
-              "Ganaste $1.350 de interés, pero en el mismo mes los precios subieron 2%: tenés más pesos, aunque "
-              "alcanzan para un poco menos."),
-             ("💵 Comprar dólares para cuidarte de la inflación y venderlos el mes que viene para pagar la cuota.", -5_000, 0, I,
-              "Cuando vendiste los dólares para pagar la cuota, entre la diferencia de compra y venta y la "
-              "inflación perdiste unos $5.000."),
+              0, 0, A,
+              "Pagaste $85.500 en vez de $90.000: te quedaron $4.500 a favor para el viaje.",
+              [EF(4_500)]),
+             ("🏦 Ponerlos en un plazo fijo que paga 1,5% por mes y sacarlos justo para la cuota.", 0, 0, R,
+              "El plazo fijo te devolvió $91.350: ganaste $1.350, menos que los $4.500 que te ahorraba el "
+              "descuento.",
+              [INV("Plazo fijo para la cuota", "🏦", 90_000, tasa=0.015, meses=1)]),
+             ("💵 Comprar dólares para cuidarte de la inflación y venderlos el mes que viene para pagar la cuota.",
+              0, 0, I,
+              "Al comprar y vender perdiste la diferencia de precio ($2.700) y el dólar subió solo 1%: volvieron "
+              "$88.173, menos de lo que tenías.",
+              [EF(-2_700), INV("Dólares para la cuota", "💵", 87_300, tasa=0.01, meses=1, moneda="dolares")]),
          ],
-         "Adelantar la cuota con 5% de descuento te ahorra $4.500, más de lo que la inflación le saca a esa "
-         "plata en un mes. El plazo fijo al 1,5% te da $1.350, pero los precios suben 2%: tenés más pesos y "
-         "podés comprar menos. Con los dólares perdés la diferencia entre el precio de compra y el de venta, y "
-         "además el dólar sube 1% mientras los precios suben 2%; como la cuota se paga en pesos, no te protege."),
+         "Adelantar la cuota con 5% de descuento te ahorra $90.000 × 5% = $4.500. El plazo fijo al 1,5% te da "
+         "$90.000 × 1,5% = $1.350: algo, pero mucho menos, y además rinde menos que el 2% que suben los precios. "
+         "Con los dólares perdés la diferencia entre el precio de compra y el de venta (3%: quedan $87.300) y el "
+         "dólar sube 1%: $87.300 × 1,01 = $88.173. Como la cuota se paga en pesos, pasar a dólares por un mes te "
+         "deja con menos plata."),
     # ------------------------------------------------------------- MES 3 (marzo)
     _esc(3, 1, "presupuesto", "colegio", "cami", "🎉",
          "{nombre}, empezaron las clases y Cami está organizando las salidas del curso para juntar plata para "
@@ -263,38 +334,45 @@ ESCENARIOS = [
          "¡Feliz cumpleaños, {nombre}! Te regalaron $40.000 y querés que rindan hasta el viaje. Todas las "
          "propuestas son en pesos:",
          [
-             ("🏦 Un plazo fijo a 30 días al 3% por mes, que vas renovando cada vez que vence.", 4_000, 0, A,
-              "Tus $40.000 crecen más rápido que los precios: cuando llegue el viaje te van a alcanzar para más "
-              "cosas que hoy."),
+             ("🏦 Un plazo fijo a 30 días al 3% por mes, que vas renovando cada vez que vence.", 0, 0, A,
+              "Tus $40.000 crecen 3% por mes, más rápido que los precios: cuando llegue el viaje te van a "
+              "alcanzar para más cosas que hoy.",
+              [INV("Plazo fijo de cumpleaños", "🏦", 40_000, tasa=0.03, meses=9, liquida=True,
+                   detalle="Rinde 3% por mes; se renueva cada 30 días hasta el viaje")]),
              ("📲 Una cuenta en la billetera Rayo, que paga 30% anual en pesos y se puede sacar cuando quieras.",
-              2_000, 0, R,
+              0, 0, R,
               "Tu plata crece 2,5% por mes, apenas por encima de la inflación: rinde, aunque menos que el plazo "
-              "fijo al 3% mensual."),
-             ("🤝 Prestárselos al tío Rubén, que el mes que viene te devuelve $40.400.", -400, 0, I,
-              "El tío Rubén te devolvió $40.400, pero en ese mes los precios subieron 2%: para comprar lo mismo "
-              "que antes con $40.000 ahora necesitás $40.800."),
+              "fijo al 3% mensual.",
+              [INV("Cuenta en Rayo", "📲", 40_000, tasa=0.025, liquida=True)]),
+             ("🤝 Prestárselos al tío Rubén, que el mes que viene te devuelve $40.400.", 0, 0, I,
+              "El tío Rubén te devuelve $40.400, pero en ese mes los precios suben 2%: para comprar lo mismo que "
+              "hoy con $40.000 vas a necesitar $40.800.",
+              [COBRAR("Lo que te debe el tío Rubén", "🤝", [(1, 40_400)], costo=40_000)]),
          ],
          "Para comparar, hay que llevar todas las tasas a la misma unidad. El plazo fijo paga 3% por mes. El 30% "
          "anual de la billetera parece más, pero dividido por 12 es 2,5% por mes. Lo del tío Rubén son $400 en un "
-         "mes: un 1%, por debajo de la inflación del 2%, así que perdés poder de compra. El plazo fijo es el que "
-         "le gana a la inflación con más margen."),
+         "mes: un 1%. Como los precios suben 2% por mes, en un mes $40.000 tienen que llegar a $40.800 solo para "
+         "comprar lo mismo: el plazo fijo llega a $41.200 (ganás), Rayo a $41.000 (ganás poco) y el tío Rubén a "
+         "$40.400 (perdés)."),
     _esc(4, 2, "ahorro", "banco", "laura", "🏦",
          "{nombre}, te sobraron $40.000 y Laura, la asesora del banco, te explica qué es invertir: poner la plata "
          "en algo que, con el tiempo, te devuelva más. Hay que mirar tres cosas: cuánto rinde, qué riesgo tiene "
-         "de perder valor y qué tan rápido podés recuperar la plata. Ojo: el mes que viene pagás otra cuota del "
+         "de perder valor y qué tan rápido podés recuperar la plata. Ojo: todos los meses pagás una cuota del "
          "viaje.",
          [
              ("💧 Un fondo money market: tu plata se junta con la de otras personas y se presta a bancos por muy "
-              "poco tiempo. Rinde alrededor de 2% por mes y la sacás el mismo día.", 2_000, 0, A,
-              "Tu plata rindió y, cuando llegó la cuota del viaje, la sacaste en el día."),
-             ("🔒 Un plazo fijo a 180 días que paga más, 3% por mes, aunque la plata no se puede sacar hasta "
-              "dentro de 6 meses.", -10_000, 0, R,
-              "La plata quedó trabada 6 meses. Para pagar la cuota le pediste un adelanto a Tano, que te "
-              "descontó $10.000 del sueldo."),
+              "poco tiempo. Rinde alrededor de 2% por mes y la sacás el mismo día.", 0, 0, A,
+              "Tu plata rinde lo mismo que suben los precios y, si una cuota se complica, la sacás en el día.",
+              [INV("Fondo money market", "💧", 40_000, tasa=0.02, liquida=True)]),
+             ("🗓️ Un plazo fijo a 180 días que paga más, 3% por mes, aunque la plata no se puede sacar hasta "
+              "dentro de 6 meses.", 0, 0, R,
+              "Rinde más, pero la plata queda trabada 6 meses: si te falta para una cuota, no la vas a poder usar.",
+              [INV("Plazo fijo a 180 días", "🗓️", 40_000, tasa=0.03, meses=6)]),
              ("📊 Acciones de una empresa conocida: comprás una parte chiquita de la empresa, y su precio sube "
-              "si le va bien y baja si le va mal.", -25_000, 0, I,
-              "Justo cuando necesitabas la plata para la cuota, la acción había bajado y vendiste perdiendo "
-              "$25.000."),
+              "si le va bien y baja si le va mal.", 0, 0, I,
+              "Qué pasó después: al mes la acción había bajado y, como necesitabas la plata para la cuota, "
+              "vendiste: volvieron $15.000 de los $40.000.",
+              [INV("Acciones", "📊", 40_000, tasas=[-0.625], meses=1)]),
          ],
          "El fondo money market rinde poco, casi no tiene riesgo y la plata se saca el mismo día. El plazo fijo "
          "a 180 días rinde más, pero la plata queda inmovilizada justo cuando tenés cuotas que pagar. Las "
@@ -305,34 +383,41 @@ ESCENARIOS = [
          "Se rompió la notebook que usás para el colegio y para organizar el viaje con Cami. El arreglo cuesta "
          "$50.000. ¿Cómo lo pagás?",
          [
-             ("🐷 Con tus ahorros, aunque te quede menos margen este mes.", -50_000, 0, A,
-              "La notebook volvió a andar y no le debés nada a nadie."),
-             ("💳 Con la tarjeta, en 3 cuotas de $18.000.", -52_000, 0, R,
-              "La notebook volvió a andar, pero el arreglo te terminó costando unos $2.000 más en pesos de hoy."),
+             ("🐷 Con tus ahorros, aunque te quede menos margen este mes.", 0, 0, A,
+              "La notebook volvió a andar y no le debés nada a nadie.",
+              [EF(-50_000)]),
+             ("💳 Con la tarjeta, en 3 cuotas de $18.000, la primera el mes que viene.", 0, 0, R,
+              "La notebook volvió a andar, pero vas a pagar $54.000: en pesos de hoy, $51.910.",
+              [PRESTAMO("Cuotas del arreglo de la notebook", "💳", [18_000, 18_000, 18_000])]),
              ("📲 Con el préstamo preaprobado de la billetera Rayo: te depositan $120.000 al instante, pagás el "
-              "arreglo y te queda plata extra.", 70_000, 120_000, I,
-              "Tu efectivo subió $70.000, pero ahora debés $120.000 y el primer mes ya suma $9.600 de "
-              "intereses. Esa deuda compite directo con las cuotas del viaje."),
+              "arreglo y te queda plata extra. Lo devolvés en 6 cuotas de $25.000.", 0, 0, I,
+              "Tu plata subió $70.000, pero ahora debés 6 cuotas de $25.000: $150.000 por $120.000. Esas cuotas "
+              "compiten todos los meses con la del viaje.",
+              [EF(-50_000), PRESTAMO("Préstamo preaprobado de Rayo", "📲", [25_000] * 6, recibido=120_000)]),
          ],
-         "Con tus ahorros pagás $50.000 y no quedás debiendo. Las 3 cuotas de $18.000 suman $54.000: aun con la "
-         "inflación, el arreglo te cuesta más. El préstamo preaprobado te hace sentir con más plata, pero debés "
-         "$120.000 que crecen 8% por mes: pagás intereses también por los $70.000 que no necesitabas."),
+         "Con tus ahorros pagás $50.000 y no quedás debiendo. Las 3 cuotas de $18.000 suman $54.000: aun "
+         "descontando la inflación ($17.647 + $17.301 + $16.962 = $51.910 de hoy), el arreglo te cuesta más. El "
+         "préstamo preaprobado te hace sentir con más plata, pero devolvés $150.000 por $120.000: pagás intereses "
+         "también por los $70.000 que no necesitabas."),
     _esc(5, 2, "riesgo_inversion", "agencia", "sofi", "🏔️",
          "Sofi, de Egresados Sur, avisa que este mes hay que pagar $50.000 de excursiones del viaje: el cerro "
          "Catedral y la navegación por el lago. Revisás tus cuentas y solo tenés $30.000 libres, porque el resto "
          "ya está separado para la cuota. No te alcanza: te faltan $20.000. ¿De dónde los sacás?",
          [
-             ("✂️ Recortar salidas y gastos del mes hasta juntar los $20.000 que faltan.", -50_000, 0, A,
+             ("✂️ Recortar salidas y gastos del mes hasta juntar los $20.000 que faltan.", 0, 0, A,
               "Saliste menos, pero juntaste lo que faltaba y pagaste las excursiones: ya tenés asegurados el "
-              "cerro Catedral y la navegación por el lago."),
+              "cerro Catedral y la navegación por el lago.",
+              [EF(-50_000)]),
              ("📲 Poner tus $30.000 en una billetera virtual que paga 1% por día, para que crezcan hasta la fecha "
-              "de pago.", -65_000, 0, R,
-              "Qué pasó después: la billetera congeló los retiros y recuperaste solo la mitad, $15.000. Igual "
-              "tuviste que pagar las excursiones, así que perdiste $15.000 de la plata del viaje."),
+              "de pago.", 0, 0, R,
+              "Qué pasó después: la billetera congeló los retiros y a fin de mes recuperaste solo la mitad, "
+              "$15.000. Igual tuviste que pagar las excursiones, así que perdiste $15.000 de la plata del viaje.",
+              [EF(-50_000), INV("Billetera que paga 1% diario", "📲", 30_000, tasas=[-0.5], meses=1)]),
              ("⚽ Apostar tus $30.000 a que Argentina le gana a Bolivia, que paga 1,70: si gana, cobrás $51.000 y "
-              "te sobra.", -80_000, 0, I,
+              "te sobra.", 0, 0, I,
               "Qué pasó después: empataron 1 a 1 y perdiste los $30.000. Igual tuviste que pagar las "
-              "excursiones, así que esa plata salió de lo que tenías para el viaje."),
+              "excursiones, así que esa plata salió de lo que tenías para el viaje.",
+              [EF(-80_000)]),
          ],
          "Ninguna inversión seria paga 1% por día: sería más de 35% por mes, y un rendimiento así viene con un "
          "riesgo enorme de perder la plata. Además, aunque fuera real, en un mes tus $30.000 llegarían a unos "
@@ -360,72 +445,85 @@ ESCENARIOS = [
          "empezar a ahorrar todos los meses. ¿Cómo lo hacés?",
          [
              ("🔁 Programar que, el día que Tano te paga, el 10% se pase solo a un fondo que paga intereses en "
-              "pesos, cerca de 2% por mes.", 3_000, 0, A,
-              "Cada mes, sin pensarlo, una parte de tu sueldo va a la plata para Bariloche, y los intereses "
-              "compensan lo que suben los precios."),
-             ("🐖 Guardar billetes en una alcancía, así no los ves y no los gastás.", 0, 0, R,
-              "Tu alcancía se va llenando, pero los billetes valen cada mes un poco menos."),
-             ("📆 Ahorrar lo que te sobre a fin de mes, cuando ya sepas cuánto gastaste.", -30_000, 0, I,
-              "A fin de mes no sobró nada: entre salidas y gastos chicos se fueron $30.000."),
+              "pesos, cerca de 2% por mes.", 0, 0, A,
+              "Desde ahora, cada mes $22.000 de tu sueldo van solos al fondo para Bariloche, y los intereses "
+              "compensan lo que suben los precios.",
+              [APORTE("Fondo para gastar en Bariloche", "🔁", 22_000, 0.02)]),
+             ("🐖 Guardar el 10% del sueldo en billetes en una alcancía, así no los ves y no los gastás.", 0, 0, R,
+              "Cada mes $22.000 van a la alcancía. Se va llenando, pero los billetes valen cada mes un poco menos.",
+              [APORTE("Alcancía para Bariloche", "🐖", 22_000, 0.0)]),
+             ("📆 Ahorrar lo que te sobre a fin de mes, cuando ya sepas cuánto gastaste.", 0, 0, I,
+              "A fin de mes no sobró nada: entre salidas y gastos chicos se fueron $30.000.",
+              [EF(-30_000)]),
          ],
          "Ahorrar apenas cobrás, antes de gastar, hace que el ahorro no dependa de que sobre plata; y si el fondo "
          "paga cerca de 2% por mes, tu plata acompaña a los precios y no pierde valor. La alcancía también ayuda "
-         "a no gastar, pero el efectivo guardado pierde 2% de valor por mes. Ahorrar lo que sobra suele fallar: "
-         "los gastos chicos ocupan todo el lugar disponible."),
+         "a no gastar, pero los billetes pierden 2% de valor por mes: $22.000 guardados 6 meses compran lo que "
+         "hoy $22.000 ÷ 1,02⁶ = $19.535. Ahorrar lo que sobra suele fallar: los gastos chicos ocupan todo el "
+         "lugar disponible."),
     # ------------------------------------------------------------- MES 7 (julio)
     _esc(7, 1, "presupuesto", "pizzeria", "tano", "⏱️",
-         "Llegaron las vacaciones de invierno y Tano te ofrece trabajar más en la pizzería. Te da tres "
-         "propuestas:",
+         "Llegaron las vacaciones de invierno y Tano te ofrece trabajar 40 horas más. Te da tres propuestas:",
          [
-             ("⏱️ 40 horas extra a $1.000 la hora, con pago seguro a fin de mes.", 40_000, 0, A,
-              "Cobraste $40.000 seguros: casi la mitad de la próxima cuota del viaje."),
+             ("⏱️ 40 horas extra en la pizzería a $1.000 la hora, que te paga a fin de mes.", 0, 0, A,
+              "Cobraste $40.000 a fin de mes: casi la mitad de la próxima cuota del viaje.",
+              [EF(40_000)]),
              ("📈 Cobrar el 10% de lo que vendas por teléfono: el año pasado un chico sacó $80.000 y otro "
-              "$20.000.", 20_000, 0, R,
+              "$20.000.", 0, 0, R,
               "Qué pasó después: hubo pocos pedidos y cobraste $20.000, la mitad de lo que te daban las horas "
-              "seguras."),
-             ("🎓 Hacer un curso de cocina de $30.000, pagándolo con tarjeta, para que en el verano Tano te "
-              "pague el doble por hora.", 0, 30_000, I,
-              "Hiciste el curso, pero el aumento llega recién en el verano, después del viaje. Mientras tanto, "
-              "debés $30.000 en la tarjeta."),
+              "seguras.",
+              [EF(20_000)]),
+             ("🎂 40 horas en el catering de un casamiento que organiza Tano, también a $1.000 la hora, pero que "
+              "te paga en marzo del año que viene, cuando cobre el evento.", 0, 0, I,
+              "Trabajaste las 40 horas, pero los $40.000 llegan en marzo, después del viaje: no te sirven para "
+              "ninguna cuota, y para entonces, con los precios más altos, van a comprar menos.",
+              [COBRAR("Lo que te paga Tano por el catering", "🎂", [(8, 40_000)])]),
          ],
-         "La cuota del viaje es un gasto fijo, así que conviene que el ingreso que la paga también sea seguro. A "
-         "comisión podés ganar más o mucho menos, y no sabés cuánto hasta fin de mes. El curso puede servir, pero "
-         "el aumento llega después del viaje y hoy te deja $30.000 de deuda que crece 8% por mes."),
+         "La cuota del viaje es un gasto fijo de todos los meses, así que conviene que la plata que la paga llegue "
+         "a tiempo y sea segura. Las horas en la pizzería pagan $40.000 a fin de mes. A comisión podés ganar más o "
+         "mucho menos, y no sabés cuánto hasta fin de mes. El catering paga lo mismo, pero en marzo: después del "
+         "viaje, y con 8 meses de precios subiendo, $40.000 ÷ 1,02⁸ = $34.140 de hoy."),
     _esc(7, 2, "inflacion", "pizzeria", "tano", "🧾",
-         "Tano te debe $60.000 por las horas extra y te ofrece tres formas de pagarte:",
+         "Tano te debe $60.000 por las horas extra del mes pasado y te ofrece tres formas de pagarte. Pensá cuánto "
+         "vas a tener dentro de 3 meses:",
          [
-             ("📊 En 2 meses, ajustando lo que te debe por la inflación más un 1% por mes.", 1_000, 0, A,
-              "Cobrás un poco más tarde, pero con más poder de compra que hoy."),
-             ("🏦 Todo ahora, y vos lo ponés en un plazo fijo al 1,5% por mes.", -500, 0, R,
-              "Cobraste en el momento, pero el plazo fijo rindió menos que la inflación y perdiste un poco de "
-              "poder de compra."),
-             ("🗓️ En 3 cuotas fijas de $20.500, que en total suman $61.500.", -1_000, 0, I,
-              "Cobrás $61.500, pero cada cuota llega con precios más altos: en pesos de hoy es menos de lo que te "
-              "debía."),
+             ("📊 Pagarte dentro de 3 meses, ajustando lo que te debe por la inflación más un 1% por mes.", 0, 0, A,
+              "En 3 meses Tano te paga $65.564: le gana a los precios y a las otras dos opciones.",
+              [COBRAR("Lo que te debe Tano (ajustado)", "📊", [(3, 65_564)])]),
+             ("🏦 Pagarte todo ahora, y vos lo ponés 3 meses en un plazo fijo al 1,5% por mes.", 0, 0, R,
+              "En 3 meses el plazo fijo te devuelve $62.741: más que los $61.500 de la tercera opción, pero menos "
+              "que con el ajuste por inflación.",
+              [EF(60_000), INV("Plazo fijo con la plata de Tano", "🏦", 60_000, tasa=0.015, meses=3)]),
+             ("🗓️ Pagarte $61.500 juntos dentro de 3 meses.", 0, 0, I,
+              "En 3 meses cobrás $61.500: más pesos que hoy, pero con los precios 6,12% más altos alcanzan para "
+              "menos que $60.000 hoy.",
+              [COBRAR("Lo que te debe Tano", "🗓️", [(3, 61_500)])]),
          ],
-         "Con el ajuste por inflación más 1%, tu plata crece 3% por mes y le gana a los precios. El plazo fijo "
-         "al 1,5% parece más que ese 1%, pero el 1% se suma a la inflación y el 1,5% no: rinde menos que el 2% "
-         "que suben los precios. Las 3 cuotas fijas suman $61.500, pero no se ajustan, y con la inflación "
-         "equivalen a unos $59.000 de hoy."),
+         "En 3 meses los precios suben 2% cada mes y se acumula: 1,02 × 1,02 × 1,02 = 1,0612, o sea 6,12%. Para "
+         "comprar lo mismo que hoy con $60.000 vas a necesitar $63.672. Con el ajuste por inflación más 1% tu "
+         "plata crece 3% cada mes: $60.000 × 1,03 × 1,03 × 1,03 = $65.564 (le gana a los precios). El plazo fijo "
+         "al 1,5%: $60.000 × 1,015 × 1,015 × 1,015 = $62.741, más que los $61.500 de la tercera opción, pero menos "
+         "que los $63.672 que necesitás. En pesos de hoy: $61.783, $59.122 y $57.953."),
     # ------------------------------------------------------------- MES 8 (agosto)
     _esc(8, 1, "intereses", "shopping", "nico", "📷",
          "{nombre}, querés llevar al viaje una cámara GoPro usada para filmar todo. Cuesta $100.000 y no tenés "
          "toda la plata. ¿Cómo la conseguís?",
          [
-             ("⏳ Juntar la plata durante 3 meses y comprarla antes del viaje.", -106_000, 0, A,
-              "La compraste un poco más cara por la inflación, pero sin pagar intereses: va a filmar todo "
-              "Bariloche."),
-             ("🤝 Pedirle prestado al tío Rubén, al 4% por mes simple, y devolverle en 6 meses.", -124_000, 0, R,
-              "Tenés la cámara, pero le devolvés al tío Rubén $124.000: $24.000 de intereses."),
-             ("📱 Sacar un préstamo en PrestaYa al 3,5% por mes capitalizable, a 12 meses.", -151_000, 0, I,
-              "Tenés la cámara, pero vas a pagar unos $151.000: el interés de cada mes se sumó a la deuda y "
-              "también generó interés."),
+             ("⏳ Juntar la plata durante 2 meses y comprarla después, aunque para entonces cueste más.", 0, 0, A,
+              "En 2 meses la cámara va a costar $104.040, pero no pagás intereses: va a filmar todo Bariloche.",
+              [COMPRA("Cámara GoPro", "📷", 2, 104_040)]),
+             ("🤝 Pedirle prestado al tío Rubén, que te cobra 4% por mes, en 2 cuotas de $54.000.", 0, 0, R,
+              "Tenés la cámara ya, pero le devolvés al tío Rubén $108.000: $8.000 de intereses.",
+              [EF(-100_000), PRESTAMO("Préstamo del tío Rubén", "🤝", [54_000, 54_000], recibido=100_000)]),
+             ("📱 Sacar un préstamo en PrestaYa: 2 cuotas de solo $56.000.", 0, 0, I,
+              "Tenés la cámara ya, pero pagás $112.000: $12.000 de intereses, un 6% por mes.",
+              [EF(-100_000), PRESTAMO("Préstamo de PrestaYa", "📱", [56_000, 56_000], recibido=100_000)]),
          ],
-         "Si esperás 3 meses, por la inflación la cámara sube a unos $106.000, pero no pagás intereses. Con el "
-         "tío Rubén, el interés simple es 4% de $100.000 cada mes: $4.000 por 6 meses, $24.000. Con PrestaYa, "
-         "capitalizable significa que cada mes el interés se suma a lo que debés y el mes siguiente también "
-         "genera interés: es interés compuesto, y en 12 meses llegás a unos $151.000. Una tasa más baja puede "
-         "salir más cara si el plazo es más largo y el interés es compuesto."),
+         "Si esperás 2 meses, la cámara sube con los precios, 2% cada mes y acumulado: $100.000 × 1,02 × 1,02 = "
+         "$104.040. Pero tu sueldo y tu plata se miden con esos mismos precios y no pagás intereses: en pesos de "
+         "hoy sigue costando $100.000. Con el tío Rubén, el 4% de $100.000 son $4.000 por mes: en 2 cuotas de "
+         "$54.000 pagás $108.000. PrestaYa no dice la tasa, pero 2 cuotas de $56.000 son $112.000: $12.000 de "
+         "interés, un 6% por mes. Hacer la cuenta del total es la forma de comparar préstamos."),
     _esc(8, 2, "deuda_credito", "celular", None, "💳",
          "Llegó el resumen de la tarjeta: gastaste $60.000 en ropa para el viaje. El pago mínimo es de $6.000 y "
          "la tarjeta cobra 8% por mes sobre lo que no pagues.",
@@ -433,84 +531,100 @@ ESCENARIOS = [
              ("💵 Pagar el total del resumen.", -60_000, 0, A,
               "Pagaste los $60.000 y la tarjeta quedó en cero."),
              ("➖ Pagar el mínimo de $6.000 y el resto más adelante.", -6_000, 54_000, R,
-              "Pagaste $6.000. Los $54.000 restantes siguen como deuda: el mes que viene van a ser $58.320, y "
-              "así cada mes, aunque no vuelvas a usar la tarjeta."),
+              "Pagaste $6.000. Los $54.000 restantes siguen como deuda: al cierre suman 8% y pasan a $58.320, "
+              "aunque no vuelvas a usar la tarjeta. Se van a ir pagando con lo que te sobre cada mes."),
              ("⏭️ No pagar este mes y ponerte al día cuando cobres el próximo sueldo.", 0, 60_000, I,
-              "Los $60.000 quedaron como deuda: el mes que viene van a ser $64.800, y siguen creciendo 8% por "
-              "mes."),
+              "Los $60.000 quedaron como deuda: al cierre suman 8% y pasan a $64.800, y siguen creciendo hasta "
+              "que te sobre plata para cancelarlos."),
          ],
          "Pagar el total cancela la deuda y no genera intereses. El pago mínimo evita recargos, pero lo que no "
          "pagaste queda como deuda y crece 8% por mes. Si no pagás nada, crece toda la deuda. La deuda de la "
          "tarjeta crece sola, aunque no vuelvas a usarla."),
     # ------------------------------------------------------------- MES 9 (septiembre)
-    _esc(9, 1, "presupuesto", "casa", "ruben", "🧮",
-         "{nombre}, te entraron $40.000 extra de propinas y tenés tres deudas de $40.000 cada una. Solo te "
-         "alcanza para cancelar una:",
+    _esc(9, 1, "presupuesto", "colegio", "cami", "🧮",
+         "Cami te pide un consejo: le entraron $40.000 de propinas y tiene tres deudas de $40.000 cada una. Solo "
+         "le alcanza para cancelar una. ¿Qué le recomendás?",
          [
-             ("💳 La tarjeta, que cobra 8% por mes.", 3_000, 0, A,
-              "Cancelaste la tarjeta y cada mes te ahorrás $3.200 de intereses: plata que queda para el viaje."),
-             ("📱 Las cuotas del celular, que cobran 3% por mes.", 1_000, 0, R,
-              "Te ahorrás $1.200 por mes del celular, pero la tarjeta sigue sumando $3.200 de intereses por mes."),
-             ("🤝 Lo que le debés al tío Rubén, que no te cobra interés pero te lo recuerda en cada asado.",
-              0, 0, I,
-              "El tío Rubén quedó contento, pero la tarjeta y el celular siguen sumando $4.400 de intereses por "
-              "mes."),
+             ("💳 Que cancele la tarjeta, que cobra 8% por mes.", 0, 0, A,
+              "Cami canceló la tarjeta y cada mes se ahorra $3.200 de intereses: plata que le queda para el viaje."),
+             ("📱 Que cancele las cuotas del celular, que cobran 3% por mes.", 0, 0, R,
+              "Cami se ahorra $1.200 por mes del celular, pero la tarjeta le sigue sumando $3.200 de intereses "
+              "por mes."),
+             ("🤝 Que le devuelva a su tío, que no le cobra interés pero se lo recuerda en cada asado.", 0, 0, I,
+              "El tío de Cami quedó contento, pero la tarjeta y el celular le siguen sumando $4.400 de intereses "
+              "por mes."),
          ],
          "Cuando la plata no alcanza para todas las deudas, conviene cancelar primero la que cobra más interés. "
-         "La tarjeta cobra 8%: $3.200 por mes sobre $40.000. El celular cobra 3%: $1.200 por mes. El tío Rubén "
-         "no cobra interés, así que esa deuda no crece mientras esperás."),
+         "La tarjeta cobra 8%: $3.200 por mes sobre $40.000. El celular cobra 3%: $1.200 por mes. El tío no cobra "
+         "interés, así que esa deuda no crece mientras se espera. Es lo mismo que hace el juego con tus deudas: "
+         "lo que te sobra al cierre cancela primero la tarjeta."),
     _esc(9, 2, "ahorro", "colegio", "carlitos", "👟",
          "Tenés $30.000 ahorrados que quizás necesites pronto si alguna cuota del viaje se complica. ¿Dónde los "
          "invertís?",
          [
              ("💧 En una cuenta remunerada al 24% anual, que suma intereses todos los días y te deja sacar la "
-              "plata cuando quieras.", 600, 0, A,
-              "Tu plata rinde y está disponible si una cuota se complica."),
-             ("🔒 En un plazo fijo a 30 días al 25% anual, que paga un poco más.", 600, 0, R,
-              "Rinde apenas $25 más por mes, pero la plata queda trabada: si la necesitás antes de los 30 días, "
-              "no la podés usar."),
+              "plata cuando quieras.", 0, 0, A,
+              "Tu plata rinde y está disponible si una cuota se complica.",
+              [INV("Cuenta remunerada", "💧", 30_000, tasa=0.02, liquida=True)]),
+             ("🏦 En un plazo fijo a 30 días al 25% anual, que paga un poco más.", 0, 0, R,
+              "Rinde apenas $25 más por mes, pero la plata queda trabada: si la necesitás antes de que venza, no "
+              "la podés usar.",
+              [INV("Plazo fijo a 30 días", "🏦", 30_000, tasa=0.0208, meses=2)]),
              ("👟 Prestárselos a Carlitos para revender zapatillas: te devuelve $36.000 en un mes, un 20%, y dice "
-              "que ya le funcionó con otros dos.", -30_000, 0, I,
+              "que ya le funcionó con otros dos.", 0, 0, I,
               "Qué pasó después: las zapatillas no se vendieron y Carlitos no te pudo devolver la plata. Perdiste "
-              "$30.000, un tercio de una cuota."),
+              "$30.000, un tercio de una cuota.",
+              [INV("Préstamo a Carlitos", "👟", 30_000, tasas=[-1.0], meses=1,
+                   detalle="Te devuelve $36.000 el mes que viene, si vende las zapatillas")]),
          ],
-         "El plazo fijo paga 25% anual y la cuenta 24%: sobre $30.000 son unos $625 contra $600 por mes, apenas "
-         "$25 de diferencia. A cambio, en el plazo fijo la plata queda trabada 30 días, y esta plata es para "
-         "cubrir una cuota si hace falta: por eso conviene la cuenta, que se saca cuando quieras. Lo de Carlitos "
-         "promete un 20% en un mes, depende de que él venda y, si sale mal, perdés todo."),
+         "El plazo fijo paga 25% anual y la cuenta 24%: sobre $30.000 son $625 contra $600 por mes, apenas $25 de "
+         "diferencia. A cambio, en el plazo fijo la plata queda trabada, y esta plata es para cubrir una cuota si "
+         "hace falta: por eso conviene la cuenta, que se saca cuando quieras. Lo de Carlitos promete un 20% en un "
+         "mes, depende de que él venda y, si sale mal, perdés todo."),
     # ------------------------------------------------------------- MES 10 (octubre)
     _esc(10, 1, "intereses", "agencia", "sofi", "📸",
          "{nombre}, Sofi te ofrece reservar el álbum de fotos y el video del viaje a precio congelado: $57.800, "
-         "que se pagan dentro de 6 meses, cuando vuelvas de Bariloche. Tus abuelos te regalaron $50.000 para "
-         "eso. Los precios suben 2% por mes y el dólar 1% por mes. ¿Dónde invertís los $50.000 para llegar?",
+         "que se pagan dentro de 6 meses, cuando vuelvas de Bariloche. Separaste $50.000 de tus ahorros para eso. "
+         "Los precios suben 2% por mes y el dólar 1% por mes. ¿Dónde invertís los $50.000 para llegar?",
          [
              ("🔁 En una cuenta que paga 2,5% por mes y suma los intereses al capital, así el mes siguiente "
-              "también generan interés.", 2_000, 0, A,
-              "Llegás a unos $57.990: alcanza para el álbum y el video, y te sobran $190."),
-             ("🏦 En un plazo fijo a 6 meses al 2,5% por mes simple.", 1_000, 0, R,
-              "Llegás a $57.500: te faltan $300 para el álbum y el video, que vas a tener que poner de tu plata."),
-             ("💵 Comprar dólares y venderlos dentro de 6 meses.", -3_000, 0, I,
-              "Al vender los dólares tenés unos $53.000: te faltan casi $5.000 para el álbum y el video."),
+              "también generan interés.", 0, 0, A,
+              "En 6 meses llegás a $57.985: alcanza para el álbum y el video, y te sobran $185.",
+              [INV("Inversión para el álbum (interés compuesto)", "🔁", 50_000, tasa=0.025, meses=6),
+               COMPRA("Álbum y video del viaje", "📸", 6, 57_800)]),
+             ("🏦 En un plazo fijo a 6 meses al 2,5% por mes simple.", 0, 0, R,
+              "En 6 meses llegás a $57.500: te faltan $300 para el álbum y el video, que vas a tener que poner de "
+              "tu plata.",
+              [INV("Plazo fijo para el álbum (interés simple)", "🏦", 50_000, meses=6,
+                   tasas=SIMPLE_2_5, detalle="Suma $1.250 por mes (2,5% de $50.000); vence en 6 meses"),
+               COMPRA("Álbum y video del viaje", "📸", 6, 57_800)]),
+             ("💵 Comprar dólares y venderlos dentro de 6 meses.", 0, 0, I,
+              "En 6 meses, al vender los dólares tenés $53.076: te faltan $4.724 para el álbum y el video.",
+              [INV("Dólares para el álbum", "💵", 50_000, tasa=0.01, meses=6, moneda="dolares"),
+               COMPRA("Álbum y video del viaje", "📸", 6, 57_800)]),
          ],
          "Las dos primeras pagan la misma tasa, 2,5% por mes. Con interés simple se calcula siempre sobre los "
-         "$50.000 y llegás a $57.500. Con interés compuesto, los intereses de cada mes también generan intereses "
-         "y llegás a unos $57.990. Los dólares suben 1% por mes: en 6 meses tus $50.000 llegan a unos $53.000. "
-         "A la misma tasa, el interés compuesto siempre rinde más que el simple."),
+         "$50.000: $1.250 por mes, $7.500 en 6 meses, y llegás a $57.500. Con interés compuesto, los intereses de "
+         "cada mes también generan intereses: $50.000 × 1,025 seis veces = $57.985. Los dólares suben 1% por mes: "
+         "$50.000 × 1,01 seis veces = $53.076. A la misma tasa, el interés compuesto siempre rinde más que el "
+         "simple."),
     _esc(10, 2, "riesgo_inversion", "celular", "nico", "🚀",
          "Nico te muestra $ROCKET, una criptomoneda nueva que subió 300% en un mes. Dice que si entrás ahora, "
          "te pagás el viaje entero.",
          [
              ("🙅 No invertir, aunque Nico insista en que es la oportunidad del año.", 0, 0, A,
-              "Qué pasó con $ROCKET: subió 40% dos semanas más y después cayó 85% cuando sus creadores vendieron "
+              "Qué pasó con $ROCKET: el primer mes subió 40% y el segundo cayó 85% cuando sus creadores vendieron "
               "todo. Tu plata del viaje quedó a salvo."),
-             ("🪙 Poner solo un poco de tus ahorros, $20.000, para no arriesgar demasiado.", 20_000, 0, R,
-              "Esta vez te salió bien: vendiste a tiempo y ganaste $20.000. Qué pasó con $ROCKET: subió 40% dos "
-              "semanas más y después cayó 85% cuando sus creadores vendieron todo. Si vendías una semana "
-              "después, perdías casi todo."),
-             ("💰 Poner una parte importante de tus ahorros, $80.000, ya que viene subiendo fuerte.",
-              -80_000, 0, I,
-              "Qué pasó con $ROCKET: subió 40% dos semanas más y después cayó 85% cuando sus creadores vendieron "
-              "todo. Perdiste $80.000, casi una cuota entera del viaje."),
+             ("🪙 Poner solo un poco de tus ahorros, $20.000, para no arriesgar demasiado.", 0, 0, R,
+              "Esta vez te salió bien: vendiste a tiempo, a fin de mes, y volvieron $40.000. Pero el mes "
+              "siguiente $ROCKET cayó 85%: si esperabas un mes más, perdías casi todo.",
+              [INV("Criptomoneda $ROCKET", "🚀", 20_000, tasas=[1.0], meses=1,
+                   detalle="Sube y baja muchísimo; la vendés a fin de mes")]),
+             ("💰 Poner una parte importante de tus ahorros, $80.000, ya que viene subiendo fuerte.", 0, 0, I,
+              "Qué pasó con $ROCKET: el primer mes subió 40% y te entusiasmaste; el segundo cayó 85% cuando sus "
+              "creadores vendieron todo. De tus $80.000 volvieron $16.800.",
+              [INV("Criptomoneda $ROCKET", "🚀", 80_000, tasas=[0.4, -0.85], meses=2,
+                   detalle="Sube y baja muchísimo; la vendés en 2 meses")]),
          ],
          "Una suba de 300% en un mes no dice nada de lo que va a pasar después: monedas nuevas como esta pueden "
          "caer casi a cero cuando sus creadores venden. Poner poco limita la pérdida, pero sigue siendo apostar "
@@ -519,65 +633,78 @@ ESCENARIOS = [
     # ------------------------------------------------------------- MES 11 (noviembre)
     _esc(11, 1, "deuda_credito", "banco", "laura", "🏦",
          "Falta un mes para el viaje. Laura, del banco, te ofrece un préstamo de $100.000 a una tasa promocional "
-         "del 1,5% por mes. ¿Qué hacés?",
+         "del 1,5% por mes, que devolvés el mes que viene: $101.500. ¿Qué hacés?",
          [
              ("🔄 Tomarlo y, si tenés deuda de tarjeta, cancelarla primero, porque cobra 8%; lo que sobre, a un "
-              "plazo fijo al 2,5% por mes.", -98_000, -100_000, A,
+              "plazo fijo al 2,5% por mes.", 0, 0, A,
               "Si tenías deuda de tarjeta al 8%, la cambiaste por una del 1,5%; y lo que sobró rinde más de lo "
-              "que cuesta."),
-             ("🙅 No tomarlo: pedir prestado siempre sale más caro que no deber nada.", -500, 0, R,
+              "que cuesta.",
+              [{"op": "refinanciar", "nombre": "Préstamo del banco", "recibido": 100_000, "cuotas": [101_500],
+                "inversion": "Plazo fijo con el préstamo", "tasa_inversion": 0.025, "meses_inversion": 1}]),
+             ("🙅 No tomarlo: pedir prestado siempre sale más caro que no deber nada.", 0, 0, R,
               "No perdiste nada, pero si tenías deuda de tarjeta, siguió creciendo al 8% por mes cuando podías "
-              "pasarla al 1,5%."),
-             ("🪙 Tomarlo y ponerlo en una plataforma cripto que paga 6% por mes.", -20_000, 0, R,
+              "pasarla al 1,5%.", []),
+             ("🪙 Tomarlo y ponerlo en una plataforma cripto que paga 6% por mes.", 0, 0, R,
               "Qué pasó después: la plataforma frenó los retiros y recuperaste solo el 80%, pero al banco le "
-              "devolvés los $100.000 completos."),
-             ("🏦 Tomarlo y ponerlo en un plazo fijo al 18% anual, para no tenerlo quieto.", -2_000, 0, I,
+              "devolvés los $101.500 completos.",
+              [PRESTAMO("Préstamo del banco", "🏦", [101_500], recibido=100_000),
+               INV("Plataforma cripto", "🪙", 100_000, tasas=[-0.2], meses=1)]),
+             ("🏦 Tomarlo y ponerlo en un plazo fijo al 18% anual, para no tenerlo quieto.", 0, 0, I,
               "Un 18% anual es 1,5% por mes: lo mismo que te cobra el préstamo. No ganaste nada y, con la "
-              "inflación, perdiste poder de compra."),
+              "inflación, perdiste poder de compra.",
+              [PRESTAMO("Préstamo del banco", "🏦", [101_500], recibido=100_000),
+               INV("Plazo fijo al 18% anual", "🏦", 100_000, tasa=0.015, meses=1)]),
          ],
          "Una deuda conviene si reemplaza una deuda más cara o si lo que te rinde es más de lo que te cuesta, "
          "sin riesgo. Este préstamo cobra 1,5% por mes: sirve para cancelar la tarjeta, que cobra 8%, y lo que "
          "sobra en un plazo fijo al 2,5% te deja ganancia. No tomarlo no te hace perder plata, pero deja pasar "
          "esa diferencia. Ponerlo en una plataforma que promete 6% suma riesgo con plata prestada. Y el plazo "
-         "fijo al 18% anual es 1,5% por mes: exactamente lo que cuesta el préstamo."),
+         "fijo al 18% anual es 18 ÷ 12 = 1,5% por mes: exactamente lo que cuesta el préstamo."),
     _esc(11, 2, "ahorro", "banco", "laura", "🧺",
-         "Tenés ahorros para cuando vuelvas del viaje y querés invertirlos. ¿Qué hacés?",
+         "Tenés $50.000 ahorrados para cuando vuelvas del viaje y querés invertirlos. ¿Qué hacés?",
          [
              ("🧺 Repartirlos: la mitad en un fondo que sacás en el día y la mitad en un fondo de bonos que rinde "
-              "algo más.", 4_000, 0, A,
-              "Repartiste la plata: si a una inversión le va mal, la otra la compensa."),
+              "algo más.", 0, 0, A,
+              "Repartiste la plata: si a una inversión le va mal, la otra la compensa.",
+              [INV("Fondo money market", "💧", 25_000, tasa=0.02, liquida=True),
+               INV("Fondo de bonos", "🧺", 25_000, tasa=0.025, liquida=True)]),
              ("📈 Ponerlos todos en acciones de una empresa que subió 80% este año y viene creciendo fuerte.",
-              -40_000, 0, R,
-              "Qué pasó después: la acción bajó y, como tenías todo ahí, perdiste $40.000."),
-             ("🎓 Pagar $65.000 por un curso de inversiones que garantiza ganar 20% por mes en pesos.",
-              -65_000, 0, I,
-              "Pagaste $65.000 por el curso y nunca viste ese 20% mensual."),
+              0, 0, R,
+              "Qué pasó después: la acción empezó a bajar y, como tenías todo ahí, cada mes perdiste una parte.",
+              [INV("Acciones de una sola empresa", "📈", 50_000, tasas=[-0.35, -0.15, 0.0])]),
+             ("🎓 Pagar $65.000 por un curso de inversiones que garantiza ganar 20% por mes en pesos.", 0, 0, I,
+              "Pagaste $65.000 por el curso y nunca viste ese 20% mensual.",
+              [EF(-65_000)]),
          ],
          "Repartir la plata entre inversiones distintas se llama diversificar: si a una le va mal, no perdés "
          "todo. Un fondo de bonos presta la plata al Estado o a empresas por más tiempo, a cambio de un interés "
          "un poco mayor. Poner todo en una sola acción hace que una caída te afecte de lleno, y que haya subido "
          "mucho no significa que siga subiendo. Nadie puede garantizar un 20% por mes en pesos: sería multiplicar "
-         "la plata casi 9 veces en un año."),
+         "la plata casi 9 veces en un año (1,2 multiplicado 12 veces)."),
     # ------------------------------------------------------------- MES 12 (diciembre)
     _esc(12, 1, "inflacion", "shopping", "cami", "🧥",
          "¡Último mes antes de Bariloche! Necesitás una campera de nieve que cuesta $50.000. Recordá que los "
-         "precios suben 2% por mes. ¿Cómo la pagás?",
+         "precios suben 2% todos los meses. ¿Cómo la pagás?",
          [
-             ("💵 De contado, con 5% de descuento: pagás $47.500.", -47_500, 0, A,
-              "Pagaste $47.500 y ya tenés la campera lista para la nieve."),
-             ("💳 En 2 cuotas sin interés de $25.000.", -48_500, 0, R,
-              "Tenés la campera, pero las 2 cuotas valen, en pesos de hoy, unos $48.500: $1.000 más que el "
-              "contado con descuento."),
-             ("🧾 En 3 cuotas de $17.000.", -49_000, 0, I,
-              "Tenés la campera, pero las 3 cuotas suman $51.000 y, aun con la inflación, equivalen a unos "
-              "$49.000 de hoy."),
+             ("💵 De contado, con 5% de descuento: pagás $47.500.", 0, 0, A,
+              "Pagaste $47.500 y ya tenés la campera lista para la nieve.",
+              [EF(-47_500)]),
+             ("💳 En 2 cuotas sin interés de $25.000, la primera el mes que viene.", 0, 0, R,
+              "Tenés la campera, pero las 2 cuotas valen, en pesos de hoy, $48.539: $1.039 más que el contado "
+              "con descuento.",
+              [PRESTAMO("Cuotas de la campera", "🧥", [25_000, 25_000])]),
+             ("🧾 En 3 cuotas de $17.000, la primera el mes que viene.", 0, 0, I,
+              "Tenés la campera, pero las 3 cuotas suman $51.000 y, aun con la inflación, en pesos de hoy "
+              "valen $49.026.",
+              [PRESTAMO("Cuotas de la campera", "🧥", [17_000, 17_000, 17_000])]),
          ],
-         "Esta vez el descuento por pagar contado es grande: 5% es más de lo que la inflación le saca de valor a "
-         "dos cuotas. Las 2 cuotas sin interés equivalen a unos $48.500 de hoy, y las 3 cuotas de $17.000 suman "
-         "$51.000, con interés escondido, y equivalen a unos $49.000. Las cuotas convienen cuando el descuento "
-         "por contado es chico frente a la inflación; cuando el descuento es grande, conviene el contado."),
+         "Esta vez el descuento por pagar contado es grande. Las 2 cuotas sin interés, con los precios subiendo "
+         "2% por mes y acumulado, equivalen a $25.000 ÷ 1,02 + $25.000 ÷ (1,02 × 1,02) = $48.539 de hoy. Las 3 "
+         "cuotas de $17.000 suman $51.000, con interés escondido, y equivalen a $49.026. El contado con 5% de "
+         "descuento cuesta $47.500. Las cuotas convienen cuando el descuento por contado es chico frente a la "
+         "inflación; cuando el descuento es grande, conviene el contado."),
     _esc(12, 2, "riesgo_inversion", "casa", "flor", "🔺",
-         "Tu prima Flor te invita a Comunidad Libertad Financiera: pagás $25.000 de inscripción y cobrás $10.000 "
+         "Tu prima Flor te invita al Club Despegue Financiero: pagás $25.000 de inscripción y cobrás $10.000 "
          "por cada amigo que sumes. Ella recuperó lo suyo en 2 semanas y te dice que con eso tenés plata para "
          "gastar en Bariloche.",
          [

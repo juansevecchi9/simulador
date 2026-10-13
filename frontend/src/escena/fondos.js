@@ -56,7 +56,7 @@ function emoji(s, c, e, x, y, size, ang = 0) {
 }
 
 function texto(s, c, t, x, y, estilo) {
-  const tx = s.add.text(x, y, t, { fontFamily: 'Bricolage Grotesque Variable, sans-serif', fontStyle: '800', ...estilo })
+  const tx = s.add.text(x, y, t, { fontFamily: '"Baloo 2 Variable", sans-serif', fontStyle: '800', ...estilo })
   tx.setResolution(2)
   c.add(tx)
   return tx

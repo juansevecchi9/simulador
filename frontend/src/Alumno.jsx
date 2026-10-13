@@ -8,6 +8,7 @@ import { Emo, separarEmoji } from './emoji'
 import Escena from './Escena'
 import { Aviso, Encabezado, nombreMes, useAnimado } from './hud'
 import HudPhaser from './HudPhaser'
+import Cartera from './Cartera'
 
 const SELLO = {
   acertada: { texto: 'Decisión acertada', clase: 'sello-ok', emoji: '✅' },
@@ -109,11 +110,11 @@ export function ElegirPersonaje({ vista, onElegido }) {
         </div>
       </div>
       <div className="personalizar-opciones">
-        <div className="segmentado" role="group" aria-label="Personaje">
+        <div className="segmentado" role="group" aria-label="Sexo del personaje">
           {['mujer', 'varon'].map((b) => (
-            <button key={b} type="button" aria-pressed={c.base === b} className={c.base === b ? 'activa' : ''}
+            <button key={b} type="button" aria-pressed={c.base === b} aria-label={b === 'mujer' ? 'Femenino' : 'Masculino'} className={c.base === b ? 'activa' : ''}
               onClick={() => setC((x) => ({ ...CONFIG_INICIAL[b], piel: x.piel, colorRopa: x.colorRopa }))}>
-              {b === 'mujer' ? 'Mujer' : 'Varón'}
+              {b === 'mujer' ? 'F' : 'M'}
             </button>
           ))}
         </div>
@@ -189,24 +190,28 @@ function RitmoMes({ etapa }) {
 }
 
 /** Lo que trae el mes: cobro, extras y lo que va a pasar en el cierre. */
-function InicioMes({ esc, economia, barras }) {
+function InicioMes({ esc, economia, barras, cartera = [] }) {
   const atrasadas = barras.cuotas_atrasadas || 0
   const cuota = economia.cuota_viaje * (1 + atrasadas)
-  const interes = Math.round(barras.deuda * economia.tasa_deuda_abierta_pct / 100)
   const extra = esc.ingreso_del_mes - economia.ingreso_base_mensual
+  const aportes = cartera.filter((x) => x.tipo === 'inversion' && /le sumás/.test(x.detalle))
+  const delMes = cartera.filter((x) => x.tipo !== 'efectivo' && x.tipo !== 'deuda_abierta' && /este mes/.test(x.detalle))
+  const abierta = cartera.find((x) => x.tipo === 'deuda_abierta')
   return (
     <div className="inicio-mes">
       <h2><Emo e="🗓️" size={22} /> Así arranca {nombreMes(esc.mes)}</h2>
       <ul>
         <li className="sube"><Emo e="🍕" size={20} /><span>{extra > 0 ? `Sueldo de la pizzería y ${pesos(extra)} extra` : extra < 0 ? `Sueldo de la pizzería, con ${pesos(-extra)} menos` : 'Sueldo de la pizzería'}</span><b>{firmado(esc.ingreso_del_mes, pesos)}</b></li>
         <li className="baja"><Emo e="🧾" size={20} /><span>Gastos fijos (celular, transporte, comida)</span><b>{firmado(-economia.gastos_fijos_mensuales, pesos)}</b></li>
+        {aportes.map((x) => <li key={x.id}><Emo e={x.emoji} size={20} /><span>Separaste para {x.nombre.toLowerCase()}</span><b>{x.detalle.match(/\$[\d.]+/)?.[0]}</b></li>)}
       </ul>
       {esc.nota_ingreso && <p className="nota-mes"><Emo e="🎁" size={18} /> {esc.nota_ingreso}</p>}
       <p className="al-cierre">Al cierre del mes, después de tus dos decisiones:</p>
       <ul>
         <li><Emo e="✈️" size={20} /><span>Se paga {atrasadas ? `la cuota y ${atrasadas} atrasada${atrasadas > 1 ? 's' : ''}` : 'la cuota del viaje'}, si te alcanza</span><b>{pesos(cuota)}</b></li>
-        <li><Emo e="🏷️" size={20} /><span>La plata guardada pierde {economia.inflacion_mensual_pct}% por la inflación</span><b>-{economia.inflacion_mensual_pct}%</b></li>
-        {barras.deuda > 0 && <li className="baja"><Emo e="💳" size={20} /><span>Tu deuda de {pesos(barras.deuda)} crece {economia.tasa_deuda_abierta_pct}%</span><b>+{pesos(interes)}</b></li>}
+        {delMes.map((x) => <li key={x.id} className={x.tipo === 'a_cobrar' || x.tipo === 'inversion' ? 'sube' : 'baja'}><Emo e={x.emoji} size={20} /><span>{x.nombre}: {x.detalle.charAt(0).toLowerCase() + x.detalle.slice(1)}</span><b /></li>)}
+        {abierta && <li className="baja"><Emo e="💳" size={20} /><span>Tu deuda de tarjeta suma {economia.tasa_deuda_abierta_pct}% de interés; lo que te sobre la va cancelando</span><b>+{pesos(Math.round(abierta.valor * economia.tasa_deuda_abierta_pct / 100))}</b></li>}
+        <li><Emo e="🏷️" size={20} /><span>Los precios suben {economia.inflacion_mensual_pct}%: lo que está en pesos vale {economia.inflacion_mensual_pct}% menos</span><b>-{economia.inflacion_mensual_pct}%</b></li>
       </ul>
     </div>
   )
@@ -217,11 +222,14 @@ function CambiosTablero({ r, previo, economia }) {
   const a = r.barras_antes
   const dEf = Math.round(previo.efectivo - a.efectivo)
   const dDeuda = Math.round(previo.deuda - a.deuda)
+  const dInv = Math.round((previo.inversiones || 0) - (a.inversiones || 0))
   const dPn = Math.round(previo.patrimonio_neto - a.patrimonio_neto)
   const dCr = Math.round(previo.criterio_financiero_pct - a.criterio_financiero_pct)
   const partes = []
   if (dEf < 0) partes.push(`salieron ${pesos(-dEf)} de tu plata`)
   if (dEf > 0) partes.push(`entraron ${pesos(dEf)} a tu plata`)
+  if (dInv > 0) partes.push(`pusiste ${pesos(dInv)} en ${dInv === -dEf ? 'una inversión, que sigue siendo tuya' : 'inversiones o plata a cobrar'}`)
+  if (dInv < 0) partes.push(`tus inversiones bajaron ${pesos(-dInv)}`)
   if (dDeuda > 0) partes.push(`tu deuda subió ${pesos(dDeuda)}`)
   if (dDeuda < 0) partes.push(`cancelaste ${pesos(-dDeuda)} de deuda`)
   const necesita = economia.cuota_viaje * (1 + (previo.cuotas_atrasadas || 0))
@@ -229,7 +237,7 @@ function CambiosTablero({ r, previo, economia }) {
   const cierraAhora = !!r.cierre_mes
   const filas = [
     ['💰', 'Patrimonio neto', firmado(dPn, pesos), dPn,
-      partes.length ? `Porque ${partes.join(' y ')}. El patrimonio es lo que tenés menos lo que debés.` : 'Esta decisión no movió tu plata ni tu deuda.'],
+      partes.length ? `Porque ${partes.join(', ').replace(/, ([^,]*)$/, ' y $1')}. El patrimonio es lo que tenés (plata e inversiones) menos lo que debés.` : 'Esta decisión no movió tu plata, tus inversiones ni tu deuda.'],
     ['🐷', 'Plata para la cuota', firmado(dEf, pesos), dEf,
       falta > 0 ? `Tenés ${pesos(previo.efectivo)} y al cierre se pagan ${pesos(necesita)}: faltan ${pesos(falta)}. Si no llegás, la cuota queda atrasada.`
         : `Tenés ${pesos(previo.efectivo)} y al cierre se pagan ${pesos(necesita)}: por ahora te alcanza.`],
@@ -255,14 +263,17 @@ function CambiosTablero({ r, previo, economia }) {
 /** Grafico de cascada: como paso el patrimonio del inicio al final del mes. */
 function CascadaMes({ c }) {
   const pagadas = c.cuotas_pagadas_en_cierre
-  const preCierre = c.efectivo_antes_cuota - c.deuda_antes_interes
+  const cuotas = pagadas * c.cuota_viaje
+  const preCierre = c.patrimonio_final - c.rendimientos + c.interes_deuda + c.compras + cuotas + c.perdida_inflacion
   const pasos = [
     ['Sueldo menos gastos fijos', c.cobro_neto],
     ['Tus dos decisiones', preCierre - c.patrimonio_inicio - c.cobro_neto],
-    [pagadas ? `Cuota${pagadas > 1 ? 's' : ''} del viaje` : 'Cuota del viaje (no se pagó)', -pagadas * c.cuota_viaje],
+    ['Lo que rindieron tus inversiones', c.rendimientos],
+    ['Intereses de la tarjeta', -c.interes_deuda],
+    ['Compras programadas', -c.compras],
+    [pagadas ? `Cuota${pagadas > 1 ? 's' : ''} del viaje` : 'Cuota del viaje (no se pagó)', -cuotas],
     ['Inflación', -c.perdida_inflacion],
-    ['Intereses de la deuda', -c.interes_deuda],
-  ]
+  ].filter(([, d], i) => i < 2 || i === 5 || i === 6 || Math.round(d) !== 0)
   let acum = c.patrimonio_inicio
   const filas = [['Empezaste el mes con', 0, acum, true]]
   for (const [t, d] of pasos) { filas.push([t, acum, acum + d, false]); acum += d }
@@ -333,22 +344,34 @@ function BarraAnimada({ desde, hasta, max, clase }) {
   )
 }
 
+const TONO_MOV = { rinde: 'sube', vence: 'neutro', cobro: 'sube', pago: 'neutro', compra: 'baja', interes: 'baja', rescate: 'neutro', pago_deuda: 'sube', impago: 'baja', aporte: 'neutro' }
+
 function Cierre({ c, mesSiguiente, onContinuar, terminado }) {
   const [paso, setPaso] = useState(0)
   useEffect(() => {
-    const ts = [1, 2, 3, 4].map((n) => setTimeout(() => setPaso(n), n * 1100))
+    const ts = [1, 2, 3, 4].map((n) => setTimeout(() => setPaso(n), n * 1000))
     return () => ts.forEach(clearTimeout)
   }, [])
   const pagadas = c.cuotas_pagadas_en_cierre
   const escalaEf = Math.max(c.efectivo_antes_cuota, c.cuota_viaje, 1)
   const efPostCuota = c.efectivo_antes_cuota - pagadas * c.cuota_viaje
-  const ef = useAnimado(paso >= 2 ? c.efectivo_final : efPostCuota)
-  const escalaDeuda = Math.max(c.deuda_final, 1)
+  const movs = c.movimientos || []
   return (
     <div className="cierre">
       <RitmoMes etapa="cierre" />
       <h2 className="cierre-titulo"><Emo e="📆" size={28} /> Cierre de {nombreMes(c.mes)}</h2>
-      <PasoCierre visible={paso >= 1} emoji="✈️" titulo={c.cuota_del_mes_pagada
+      <PasoCierre visible={paso >= 1} emoji="💼" titulo={movs.length ? 'Tus inversiones y deudas este mes' : 'Sin inversiones ni deudas que se movieran'} tono="neutro">
+        {movs.length ? (
+          <ul className="movimientos">
+            {movs.map((m, i) => (
+              <li key={i} className={TONO_MOV[m.tipo] || ''} style={{ animationDelay: `${0.15 * i}s` }}>
+                <Emo e={m.emoji} size={20} /><span><b>{m.posicion}</b>{m.texto}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <p>No tenías inversiones, préstamos ni deudas de tarjeta: este mes no hubo nada que rindiera o se pagara.</p>}
+      </PasoCierre>
+      <PasoCierre visible={paso >= 2} emoji="✈️" titulo={c.cuota_del_mes_pagada
         ? `Cuota del viaje pagada${pagadas > 1 ? ` (y ${pagadas - 1} atrasada${pagadas > 2 ? 's' : ''})` : ''}`
         : 'No alcanzó para la cuota del viaje'} tono={c.cuota_del_mes_pagada ? 'ok' : 'bad'}>
         <p>{c.cuota_del_mes_pagada
@@ -356,20 +379,12 @@ function Cierre({ c, mesSiguiente, onContinuar, terminado }) {
           : `Tenías ${pesos(c.efectivo_antes_cuota)} y la cuota es de ${pesos(c.cuota_viaje)}. ${c.cuotas_atrasadas > 1 ? `Quedan ${c.cuotas_atrasadas} cuotas sin pagar: se pagan` : 'Queda 1 cuota sin pagar: se paga'} cuando te alcance.`}</p>
         <BarraAnimada desde={c.efectivo_antes_cuota} hasta={efPostCuota} max={escalaEf} clase="b-cuota" />
       </PasoCierre>
-      <PasoCierre visible={paso >= 2} emoji="🏷️" titulo="La inflación achicó tu plata" tono="warn">
+      <PasoCierre visible={paso >= 3} emoji="🏷️" titulo="Los precios subieron 2%" tono="warn">
         <p>{c.perdida_inflacion > 0
-          ? `Los precios subieron 2%: tus ${pesos(efPostCuota)} guardados ahora compran lo que antes compraban ${pesos(c.efectivo_final)}. Perdiste ${pesos(c.perdida_inflacion)} de poder de compra.`
-          : 'No tenías plata guardada, así que la inflación no te quitó nada este mes.'}</p>
-        <BarraAnimada desde={efPostCuota} hasta={c.efectivo_final} max={escalaEf} clase="b-inflacion" />
-        <span className="cifra-viva">{pesos(ef)}</span>
-      </PasoCierre>
-      <PasoCierre visible={paso >= 3} emoji="💳" titulo={c.deuda_antes_interes > 0 ? 'Tu deuda creció sola' : 'Sin deudas que crezcan'} tono={c.deuda_antes_interes > 0 ? 'bad' : 'ok'}>
-        {c.deuda_antes_interes > 0 ? (
-          <>
-            <p>Debías {pesos(c.deuda_antes_interes)}. Con el {c.tasa_deuda_pct}% de interés de este mes, ahora debés <b>{pesos(c.deuda_final)}</b> (+{pesos(c.interes_deuda)}), aunque no hayas gastado nada nuevo. El mes que viene, el {c.tasa_deuda_pct}% se calcula sobre {pesos(c.deuda_final)}.</p>
-            <BarraAnimada desde={c.deuda_antes_interes} hasta={c.deuda_final} max={escalaDeuda} clase="b-deuda" />
-          </>
-        ) : <p>No tenés tarjeta ni préstamos pendientes: nada te cobra intereses.</p>}
+          ? `Todo lo que tenés en pesos (tu plata y tus inversiones) compra 2% menos, y lo que debés en pesos también pesa 2% menos. En total, tu patrimonio perdió ${pesos(c.perdida_inflacion)} de poder de compra.`
+          : c.perdida_inflacion < 0
+            ? `Como debés más de lo que tenés en pesos, la inflación achicó tu deuda: tu patrimonio mejoró ${pesos(-c.perdida_inflacion)}. Ojo: los intereses de la deuda son mucho más grandes que eso.`
+            : 'No tenías plata guardada ni deudas en pesos: la inflación no te cambió nada este mes.'}</p>
       </PasoCierre>
       <div className={`cierre-acciones ${paso >= 4 ? 'visible' : ''}`}>
         {paso >= 4 && <CascadaMes c={c} />}
@@ -403,6 +418,7 @@ function Historial({ items, indice, setIndice, onVolver, textoVolver = 'Volver a
 
 /** Barras intermedias (antes del cierre) a partir de los datos del cierre del mes. */
 function barrasPrevias(r) {
+  if (r.barras_previas) return r.barras_previas
   const c = r.cierre_mes
   if (!c) return r.barras
   const pagadas = c.cuotas_pagadas_total - c.cuotas_pagadas_en_cierre
@@ -458,6 +474,7 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
   const barras = fase === 'resultado' ? previo : fase === 'cierre' ? barrasCierre(resultado) : vista.barras
   const barrasAntes = fase === 'resultado' ? resultado.barras_antes : fase === 'cierre' ? previo : fase === 'pregunta' ? antesMes : null
   const expresion = resultado && fase !== 'pregunta' ? resultado.avatar : vista.avatar
+  const cartera = fase === 'resultado' ? resultado.cartera_previa : fase === 'cierre' ? resultado.cierre_mes?.cartera : vista.cartera
   const mesMostrado = fase === 'historial' && historial ? historial[indiceHist].mes : (resultado?.cierre_mes?.mes ?? esc?.mes ?? 12)
 
   const estadoEscena = useMemo(() => {
@@ -518,8 +535,10 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
       <div className="escenario-col">
         <Escena ref={escenaRef} estado={estadoEscena} />
         <HudPhaser barras={barras} antes={barrasAntes} economia={vista.economia} enCierre={fase === 'cierre'} />
+        <div className="solo-ancho"><Cartera items={cartera} /></div>
       </div>
       <div className="panel-juego" ref={panel}>
+        <div className="solo-angosto"><Cartera items={cartera} compacta /></div>
         {fase === 'intro' && (
           <div className="intro">
             <Dialogo escena={{ personaje: 'cami', personaje_nombre: 'Cami', personaje_rol: 'tu mejor amiga del curso', lugar_nombre: 'Tu casa' }}
@@ -527,8 +546,9 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
             <ul className="reglas">
               <li><Emo e="🍕" size={26} /><span>Trabajás los fines de semana en la <b>{vista.economia.trabajo.nombre}</b>: cobrás {pesos(vista.economia.ingreso_base_mensual)} por mes y pagás {pesos(vista.economia.gastos_fijos_mensuales)} de gastos fijos.</span></li>
               <li><Emo e="🗓️" size={26} /><span>Cada mes tomás <b>dos decisiones</b>. Al cierre, si te alcanza la plata, la cuota del viaje se paga sola.</span></li>
-              <li><Emo e="🏷️" size={26} /><span>Los precios suben <b>{vista.economia.inflacion_mensual_pct}% por mes</b> y el dólar <b>{vista.economia.suba_dolar_mensual_pct}% por mes</b>.</span></li>
-              <li><Emo e="💳" size={26} /><span>La deuda que no pagues crece <b>{vista.economia.tasa_deuda_abierta_pct}% por mes</b>, sola.</span></li>
+              <li><Emo e="🏷️" size={26} /><span>Los precios suben <b>{vista.economia.inflacion_mensual_pct}% por mes</b> y el dólar <b>{vista.economia.suba_dolar_mensual_pct}% por mes</b>. Lo que está en pesos vale {vista.economia.inflacion_mensual_pct}% menos cada mes.</span></li>
+              <li><Emo e="💳" size={26} /><span>La deuda de tarjeta suma <b>{vista.economia.tasa_deuda_abierta_pct}% de interés por mes</b>. Al cierre, lo que te sobra después de la cuota la va cancelando.</span></li>
+              <li><Emo e="💼" size={26} /><span>Tus inversiones y préstamos evolucionan mes a mes: los vas a ver siempre en <b>tu cartera</b>. Todos los montos están en pesos de hoy.</span></li>
             </ul>
             <button className="primario" onClick={() => setFase('pregunta')}>Arrancar en enero</button>
           </div>
@@ -537,7 +557,7 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
           <div className="pregunta" key={esc.escenario_id}>
             <RitmoMes etapa={esc.orden === 1 ? 'd1' : 'd2'} />
             <div className="paso-num">Decisión {esc.numero} de 24</div>
-            {esc.orden === 1 && <InicioMes esc={esc} economia={vista.economia} barras={vista.barras} />}
+            {esc.orden === 1 && <InicioMes esc={esc} economia={vista.economia} barras={vista.barras} cartera={vista.cartera} />}
             <Dialogo escena={esc.escena} texto={esc.texto_situacion} />
             <Opciones opciones={esc.opciones} deshabilitado={enviando} onElegir={elegir} />
             {error && <p className="error">{error}</p>}
@@ -599,9 +619,11 @@ export function Resumen({ dni, vista, onSalir }) {
       <Encabezado economia={r.economia} mes={12} pagadas={b.cuotas_pagadas} atrasadas={b.cuotas_atrasadas} onHistorial={hist ? null : verHistorial} hayHistorial />
       <div className="escenario-col">
         <Escena estado={hist ? { ...estado, modo: 'escena', mes: hist[indice].mes, ...hist[indice].escena } : estado} />
+        <div className="solo-ancho"><Cartera items={r.cartera} /></div>
       </div>
       <div className="panel-juego">
         {hist && <Historial items={hist} indice={indice} setIndice={setIndice} onVolver={() => setHist(null)} textoVolver="Volver al final del viaje" />}
+        {!hist && <div className="solo-angosto"><Cartera items={r.cartera} compacta /></div>}
         {!hist && <div className={`final final-${nivel}`}>
           <h1>{TITULO_FINAL[nivel](r.nombre)}</h1>
           <p className="final-mensaje">{r.mensaje}</p>

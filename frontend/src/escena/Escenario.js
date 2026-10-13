@@ -7,9 +7,9 @@ import { dibujarFinal, dibujarFondo, dibujarRuta, emojiProps, estacion, H, W } f
 
 const EXTRA = ['🪙', '💸', '✨', '⭐', '🎆', '🎊', '❓', '💳', '🚌', '✈️', '☁️', '🌧️',
   // objetos de cada situacion
-  '📋', '👟', '🚲', '🎉', '📈', '🎂', '🏦', '💻', '🏔️', '🐖', '⏱️', '🧾', '📷', '🧮', '🎓', '🚀', '🧺', '🧥', '🔺', '📸', '❤️', '🚀']
+  '📋', '👟', '🚲', '🎉', '📈', '🎂', '🏦', '💻', '🏔️', '🐖', '⏱️', '🧾', '📷', '🧮', '🎓', '🚀', '🧺', '🧥', '🔺', '📸', '❤️', '🚀', '📊']
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-const FUENTE = 'Bricolage Grotesque Variable, sans-serif'
+const FUENTE = '"Baloo 2 Variable", sans-serif'
 
 async function texturaSvg(scene, key, uri, size) {
   if (scene.textures.exists(key)) return key
@@ -162,7 +162,7 @@ export default class Escenario extends Phaser.Scene {
     const pts = [[-95, 220], [-60, 200], [-30, 205], [0, 170], [30, 150], [60, 110], [95, 70]]
     g.moveTo(...pts[0]); pts.slice(1).forEach((p) => g.lineTo(...p)); g.strokePath()
     g.fillStyle(0x3897f0, 1).fillCircle(48, 25, 7)
-    const t = (x, y, txt, tam, color, peso = '800') => this.add.text(x, y, txt, { fontFamily: 'Figtree Variable, sans-serif', fontSize: `${tam}px`, fontStyle: peso, color }).setResolution(2)
+    const t = (x, y, txt, tam, color, peso = '800') => this.add.text(x, y, txt, { fontFamily: '"Lexend Variable", sans-serif', fontSize: `${tam}px`, fontStyle: peso, color }).setResolution(2)
     const usuario = t(-w / 2 + 50, 16, '@maxi.inversor', 15, '#12343f')
     const tilde = t(44, 16, '✓', 11, '#ffffff')
     const cifra = this.add.text(0, 92, '+12%\npor semana', { fontFamily: FUENTE, fontSize: '34px', fontStyle: '800', color: '#ffffff', align: 'center' }).setOrigin(0.5, 0).setResolution(2)
@@ -189,7 +189,7 @@ export default class Escenario extends Phaser.Scene {
     this.sombraNpc.setVisible(true)
     this.tweens.add({ targets: this.npc, alpha: 1, x: 750, duration: 450, ease: 'Cubic.out' })
     const t1 = this.add.text(0, 0, nombre, { fontFamily: FUENTE, fontSize: '26px', fontStyle: '800', color: '#12343f' }).setOrigin(0.5).setResolution(2)
-    const t2 = this.add.text(0, 26, rol, { fontFamily: 'Figtree Variable, sans-serif', fontSize: '17px', color: '#4f6670' }).setOrigin(0.5).setResolution(2)
+    const t2 = this.add.text(0, 26, rol, { fontFamily: '"Lexend Variable", sans-serif', fontSize: '17px', color: '#4f6670' }).setOrigin(0.5).setResolution(2)
     const ancho = Math.max(t1.width, t2.width) + 36
     const fondo = this.add.graphics().fillStyle(0xffffff, 0.95).fillRoundedRect(-ancho / 2, -22, ancho, 66, 16)
     fondo.lineStyle(3, 0x12343f, 1).strokeRoundedRect(-ancho / 2, -22, ancho, 66, 16)

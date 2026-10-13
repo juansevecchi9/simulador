@@ -31,6 +31,15 @@ class OpcionC:
     tipo_error: str | None
     consecuencia: str
     explicacion: str
+    ops: tuple | None = None
+
+
+def _ops_contenido(mes: int, orden: int, indice: int):
+    """Operaciones mes a mes de una opcion (parametrizadas en contenido.py)."""
+    for e in contenido.ESCENARIOS:
+        if e["mes"] == mes and e["orden"] == orden and indice < len(e["opciones"]):
+            return e["opciones"][indice].get("ops")
+    return None
 
 
 @dataclass(frozen=True)
@@ -48,11 +57,15 @@ class Catalogo:
         self.parametros = {p.clave: p.valor for p in db.scalars(select(ParametroGlobal))}
         self.inflacion = {i.mes: i.porcentaje for i in db.scalars(select(InflacionMensual))}
         ops_por_esc: dict[int, list[OpcionC]] = defaultdict(list)
+        esc_db = {e.escenario_id: e for e in db.scalars(select(Escenario))}
         for o in db.scalars(select(Opcion).order_by(Opcion.opcion_id)):
             consecuencia, _, explicacion = o.mensaje_feedback.partition(contenido.SEPARADOR_FEEDBACK)
+            e = esc_db[o.escenario_id]
+            ops = _ops_contenido(e.mes, e.orden, len(ops_por_esc[o.escenario_id]))
             ops_por_esc[o.escenario_id].append(OpcionC(
                 o.opcion_id, o.escenario_id, o.texto_opcion, o.delta_ahorro, o.delta_deuda,
-                o.clasificacion, o.tipo_error, consecuencia.strip(), explicacion.strip()))
+                o.clasificacion, o.tipo_error, consecuencia.strip(), explicacion.strip(),
+                tuple(ops) if ops is not None else None))
         self.escenarios = [
             EscenarioC(e.escenario_id, e.mes, e.orden, e.eje_tematico, e.texto_situacion,
                        tuple(ops_por_esc[e.escenario_id]))
@@ -86,7 +99,8 @@ def inflacion(db: Session) -> dict[int, float]:
 
 
 def _a_motor(op: OpcionC) -> motor.OpcionMotor:
-    return motor.OpcionMotor(op.opcion_id, op.delta_ahorro, op.delta_deuda, op.clasificacion, op.tipo_error)
+    return motor.OpcionMotor(op.opcion_id, op.delta_ahorro, op.delta_deuda, op.clasificacion, op.tipo_error,
+                             list(op.ops) if op.ops is not None else None)
 
 
 def elegidas_de(db: Session, dni: int) -> list[tuple[OpcionC, Decision]]:
@@ -179,6 +193,7 @@ def _vista(db: Session, est: Estudiante, pares) -> dict:
         "estudiante": {"dni": est.estudiante_id, "nombre": est.nombre, "curso_id": est.curso_id,
                        "variante_personaje": est.variante_personaje},
         "barras": motor.barras(p, estado),
+        "cartera": motor.cartera(estado),
         "avatar": motor.estado_avatar(estado),
         "mes_actual": esc.mes if esc else 12,
         "decisiones_tomadas": estado.decisiones,
@@ -212,6 +227,10 @@ def _cierre_dict(c: motor.CierreMes, p: dict) -> dict:
         "patrimonio_inicio": c.patrimonio_inicio,
         "cobro_neto": c.cobro_neto,
         "patrimonio_final": c.patrimonio_neto,
+        "rendimientos": c.rendimientos,
+        "compras": c.compras,
+        "movimientos": c.movimientos,
+        "cartera": c.cartera,
     }
 
 
@@ -231,6 +250,8 @@ def registrar_decision(db: Session, est: Estudiante, opcion_id: int, tiempo: int
     pares = pares + [(op, dec)]
     estado = _simular(db, pares)
     despues = motor.barras(p, estado)
+    previo = motor.simular(p, inflacion(db), [_a_motor(o) for o, _ in pares], cerrar_ultimo=False)
+    cartera_previa = motor.cartera(previo)
     cierre = None
     if esc.orden == 2:  # el mes se cerro: guardar snapshot (AvanceMensual)
         c = estado.cierres[-1]
@@ -250,6 +271,8 @@ def registrar_decision(db: Session, est: Estudiante, opcion_id: int, tiempo: int
         "opcion_elegida": op.texto,
         "barras_antes": antes,
         "barras": despues,
+        "barras_previas": motor.barras(p, previo),
+        "cartera_previa": cartera_previa,
         "avatar": motor.estado_avatar(estado),
         "cierre_mes": cierre,
         "terminado": sig is None,
@@ -312,6 +335,7 @@ def resumen_final(db: Session, est: Estudiante) -> dict:
     return {
         "nombre": est.nombre.split()[0].capitalize(),
         "barras": b,
+        "cartera": motor.cartera(estado),
         "avatar": motor.estado_avatar(estado),
         "mensaje": mensaje,
         "acertadas": estado.acertadas, "riesgosas": estado.riesgosas, "incorrectas": estado.incorrectas,

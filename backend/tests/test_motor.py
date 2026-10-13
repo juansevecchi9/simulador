@@ -18,7 +18,8 @@ def _ops(elegir):
     for esc in contenido.ESCENARIOS:
         idx = elegir(esc)
         o = esc["opciones"][idx]
-        out.append(motor.OpcionMotor(0, o["delta_ahorro"], o["delta_deuda"], o["clasificacion"], o["tipo_error"]))
+        out.append(motor.OpcionMotor(0, o["delta_ahorro"], o["delta_deuda"], o["clasificacion"], o["tipo_error"],
+                                     o.get("ops")))
     return out
 
 
@@ -77,21 +78,35 @@ def test_perfiles_de_jugador():
     assert prudente.terminado and motor.avance_viaje_pct(P, prudente.cuotas_pagadas) == 100
     assert prudente.deuda == 0 and prudente.patrimonio_neto() > 200_000
     assert motor.criterio_pct(prudente) == 100
-    assert incorrecta.patrimonio_neto() < -300_000
+    assert incorrecta.patrimonio_neto() < -50_000
     assert motor.avance_viaje_pct(P, incorrecta.cuotas_pagadas) < 100
     assert motor.criterio_pct(incorrecta) == 0
 
 
-def test_cierre_aplica_interes_e_inflacion():
-    e = motor.Estado(efectivo=200_000, deuda=10_000)
+def _estado(efectivo=0.0, deuda=0.0, **kw):
+    e = motor.Estado(efectivo=efectivo, **kw)
+    e.deuda = deuda
+    return e
+
+
+def test_cierre_paga_cuota_interes_cancela_deuda_con_lo_que_sobra_e_inflacion():
+    e = _estado(200_000, 10_000)
     c = motor.cerrar_mes(e, P, 1, 0.02)
     assert c.cuotas_pagadas_en_cierre == 1 and c.cuota_del_mes_pagada
-    assert round(e.deuda) == 10_800
-    assert round(e.efectivo) == round((200_000 - 90_000) * 0.98)
+    assert c.interes_deuda == 800  # 8% de 10.000
+    # 200.000 - 90.000 de cuota - 10.800 de deuda cancelada (queda la reserva de una cuota)
+    assert e.deuda == 0 and round(e.efectivo) == round((200_000 - 90_000 - 10_800) / 1.02)
+
+
+def test_deuda_se_cancela_guardando_una_cuota_de_reserva():
+    e = _estado(150_000, 100_000)
+    motor.cerrar_mes(e, P, 1, 0.0)
+    # 150.000 - 90.000 de cuota = 60.000: menos que la reserva, no se cancela nada
+    assert round(e.deuda) == 108_000 and round(e.efectivo) == 60_000
 
 
 def test_cuota_impaga_queda_atrasada_y_se_paga_despues():
-    e = motor.Estado(efectivo=50_000)
+    e = _estado(50_000)
     c1 = motor.cerrar_mes(e, P, 1, 0.0)
     assert not c1.cuota_del_mes_pagada and c1.cuotas_atrasadas == 1
     e.efectivo += 200_000
@@ -100,15 +115,65 @@ def test_cuota_impaga_queda_atrasada_y_se_paga_despues():
 
 
 def test_cancelar_deuda_no_paga_de_mas():
-    e = motor.Estado(efectivo=200_000, deuda=30_000)
+    e = _estado(200_000, 30_000)
     motor.aplicar_opcion(e, motor.OpcionMotor(0, -98_000, -100_000, "acertada", None))
     assert e.deuda == 0 and e.efectivo == 200_000 - 98_000 + 70_000
 
 
 def test_descubierto_pasa_a_deuda():
-    e = motor.Estado(efectivo=10_000)
+    e = _estado(10_000)
     motor.aplicar_opcion(e, motor.OpcionMotor(0, -30_000, 0, "riesgosa", "x"))
     assert e.efectivo == 0 and e.deuda == 20_000
+
+
+def test_inversion_rinde_mes_a_mes_y_vuelve_al_vencer():
+    e = _estado(100_000)
+    op = motor.OpcionMotor(0, 0, 0, "acertada", None,
+                           [{"op": "inversion", "nombre": "PF", "monto": 40_000, "tasa": 0.03, "meses": 2}])
+    motor.aplicar_opcion(e, op, INF)
+    assert e.efectivo == 60_000 and e.inversiones() == 40_000 and e.patrimonio_neto() == 100_000
+    sin_inflacion = {m: 0.0 for m in range(1, 13)}
+    e.efectivo += 200_000
+    motor.cerrar_mes(e, P, 1, 0.0)
+    assert round(e.inversiones()) == 41_200  # rindio un mes, todavia no vence
+    motor.cerrar_mes(e, P, 2, 0.0)
+    assert e.inversiones() == 0  # vencio: volvio al efectivo
+    assert sin_inflacion
+
+
+def test_prestamo_en_cuotas_se_paga_en_sus_meses():
+    e = _estado(0)
+    op = motor.OpcionMotor(0, 0, 0, "riesgosa", "x",
+                           [{"op": "prestamo", "nombre": "Rubén", "recibido": 50_000, "cuotas": [27_000, 27_000]}])
+    motor.aplicar_opcion(e, op, {m: 0.0 for m in range(1, 13)})
+    assert e.efectivo == 50_000 and e.deuda == 54_000
+    e.efectivo += 300_000
+    motor.cerrar_mes(e, P, 1, 0.0)
+    assert e.deuda == 54_000  # la primera cuota es el mes que viene
+    e.mes_actual = 2
+    motor.cerrar_mes(e, P, 2, 0.0)
+    assert e.deuda == 27_000
+
+
+def test_si_falta_para_la_cuota_se_sacan_inversiones_liquidas_y_no_las_trabadas():
+    e = _estado(150_000)
+    ops = [{"op": "inversion", "nombre": "Fondo", "monto": 50_000, "tasa": 0.0, "liquida": True},
+           {"op": "inversion", "nombre": "PF 180", "monto": 40_000, "tasa": 0.0, "meses": 6}]
+    motor.aplicar_opcion(e, motor.OpcionMotor(0, 0, 0, "acertada", None, ops), INF)
+    assert e.efectivo == 60_000
+    c = motor.cerrar_mes(e, P, 1, 0.0)
+    assert c.cuota_del_mes_pagada and e.efectivo == 0
+    assert {x.nombre: round(x.valor) for x in e.posiciones} == {"Fondo": 20_000, "PF 180": 40_000}
+
+
+def test_aporte_mensual_se_separa_al_cobrar():
+    nada = motor.OpcionMotor(0, 0, 0, "acertada", None, [])
+    aporte = motor.OpcionMotor(0, 0, 0, "acertada", None,
+                               [{"op": "aporte", "nombre": "Fondo", "monto": 22_000, "tasa": 0.02}])
+    e = motor.simular(P, INF, [nada] * 11 + [aporte] + [nada] * 2)  # aporte en el mes 6; despues el mes 7
+    fondo = next(x for x in e.posiciones if x.nombre == "Fondo")
+    # 22.000 en el mes 6 (2% de interes y 2% de inflacion se compensan) + 22.000 al cobrar en los meses 7 y 8
+    assert round(fondo.valor) == 66_000
 
 
 def test_criterio_arranca_en_50_y_se_mueve_de_a_poco():
@@ -123,9 +188,9 @@ def test_criterio_arranca_en_50_y_se_mueve_de_a_poco():
 
 
 def test_avatar_cinco_expresiones():
-    e = motor.Estado(efectivo=0, deuda=150_000)
+    e = _estado(0, 150_000)
     assert motor.estado_avatar(e) == "triste"
-    e = motor.Estado(efectivo=0, deuda=5_000)
+    e = _estado(0, 5_000)
     assert motor.estado_avatar(e) == "preocupado"
     e = motor.Estado(efectivo=100_000)
     assert motor.estado_avatar(e) == "neutral"  # todavia no decidio

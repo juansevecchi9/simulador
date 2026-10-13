@@ -6,8 +6,8 @@ import Phaser from 'phaser'
 import { pesos } from './api'
 import { codigoEmoji } from './emoji'
 
-const FUENTE = 'Bricolage Grotesque Variable, sans-serif'
-const TEXTO = 'Figtree Variable, sans-serif'
+const FUENTE = '"Baloo 2 Variable", sans-serif'
+const TEXTO = '"Lexend Variable", sans-serif'
 const C = {
   papel: 0xffffff, niebla: 0xeef4f5, tinta: '#12343f', suave: '#4f6670', borde: 0xcfdfe3,
   azul: 0x378add, violeta: 0x7f77dd, verde: 0x1d9e75, sol: 0xffc857, warn: 0xef9f27, rojo: 0xe24b4a,
