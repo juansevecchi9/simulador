@@ -268,3 +268,36 @@ def test_recorrido_completo_y_panel(client):
     assert len(det["escenas"]) == 4
     al = client.get(f"/api/docente/cursos/1001/alumnos/40111222", params={"codigo": "DOCE2026"}).json()
     assert len(al["trayectoria"]) == 12 and al["finalizacion_pct"] == 100
+
+
+def test_cuotas_que_salen_de_un_fondo():
+    """Las cuotas vinculadas a un fondo se pagan sacando de ese fondo, no del sueldo."""
+    e = motor.Estado(efectivo=0)
+    e.mes_actual = 6
+    op = motor.OpcionMotor(1, 0, 0, "acertada", None, [
+        {"op": "efectivo", "monto": 50_000},
+        {"op": "prestamo", "nombre": "Cuotas", "emoji": "🥾", "cuotas": [25_000, 25_000], "recibido": 0,
+         "paga_con": "Fondo"},
+        {"op": "inversion", "nombre": "Fondo", "emoji": "💧", "monto": 50_000, "tasa": 0.03, "liquida": True}])
+    motor.aplicar_opcion(e, op)
+    e.efectivo = 200_000
+    motor.cerrar_mes(e, P, 6, 0.0)
+    motor.cerrar_mes(e, P, 7, 0.0)
+    fondo = e.de_tipo("inversion")[0]
+    assert round(fondo.valor) == round(50_000 * 1.03 * 1.03 - 25_000)
+
+
+def test_refinanciar_solo_la_deuda():
+    """Sin deuda de tarjeta no se toma el prestamo; con deuda, solo lo necesario."""
+    op = motor.OpcionMotor(1, 0, 0, "acertada", None, [
+        {"op": "refinanciar", "nombre": "Préstamo", "recibido": 100_000, "cuotas": [101_500], "solo_deuda": True,
+         "inversion": "Plazo", "tasa_inversion": 0.025}])
+    e = motor.Estado(efectivo=10_000)
+    motor.aplicar_opcion(e, op)
+    assert e.posiciones == [] and e.efectivo == 10_000
+    e = motor.Estado(efectivo=10_000)
+    e.deuda = 40_000
+    motor.aplicar_opcion(e, op)
+    assert e.deuda_abierta() == 0
+    assert e.de_tipo("deuda_cuotas")[0].pagos[0][2] == 40_600
+    assert e.de_tipo("inversion") == [] and e.efectivo == 10_000

@@ -88,6 +88,7 @@ class Posicion:
     desde: int = 1
     meses_corridos: int = 0
     detalle: str = ""
+    paga_con: int | None = None  # deuda en cuotas que se paga con una inversion (id)
 
     def saldo(self) -> float:
         if self.tipo in ("deuda_cuotas", "a_cobrar", "compra"):
@@ -253,6 +254,7 @@ def _factor(inflacion: dict, desde: int, meses: int) -> float:
 def aplicar_opcion(estado: Estado, op: OpcionMotor, inflacion: dict | None = None, p: dict | None = None) -> None:
     inflacion = inflacion or {}
     mes = estado.mes_actual
+    vincular = []
     for o in op.operaciones():
         t = o["op"]
         if t == "efectivo":
@@ -280,8 +282,10 @@ def aplicar_opcion(estado: Estado, op: OpcionMotor, inflacion: dict | None = Non
             # Las deudas quedan fijas en pesos: la inflacion no las achica (el sueldo tampoco sube).
             estado.efectivo += o.get("recibido", 0)
             pagos = [(mes + k, n, n) for k, n in enumerate(o["cuotas"], start=1)]
-            estado.nueva(tipo="deuda_cuotas", nombre=o["nombre"], emoji=o.get("emoji", "🤝"), pagos=pagos,
-                         detalle=o.get("detalle", ""))
+            d = estado.nueva(tipo="deuda_cuotas", nombre=o["nombre"], emoji=o.get("emoji", "🤝"), pagos=pagos,
+                             detalle=o.get("detalle", ""))
+            if o.get("paga_con"):
+                vincular.append((d, o["paga_con"]))
         elif t == "a_cobrar":
             pagos = [(mes + k, n / _factor(inflacion, mes, k), n) for k, n in o["pagos"]]
             estado.efectivo -= o.get("costo", 0)
@@ -293,9 +297,17 @@ def aplicar_opcion(estado: Estado, op: OpcionMotor, inflacion: dict | None = Non
                          pagos=[(mes + k, n, n)], detalle=o.get("detalle", ""))
         elif t == "refinanciar":
             # Tomar un prestamo, cancelar la deuda abierta (mas cara) e invertir lo que sobra.
+            # Con solo_deuda se pide solo lo necesario para cancelar la deuda abierta (o nada).
             recibido = o["recibido"]
+            cuotas = o["cuotas"]
+            if o.get("solo_deuda"):
+                tope = min(recibido, round(estado.deuda_abierta()))
+                if tope < 1:
+                    continue
+                cuotas = [round(c * tope / recibido) for c in cuotas]
+                recibido = tope
             estado.efectivo += recibido
-            pagos = [(mes + k, n, n) for k, n in enumerate(o["cuotas"], start=1)]
+            pagos = [(mes + k, n, n) for k, n in enumerate(cuotas, start=1)]
             estado.nueva(tipo="deuda_cuotas", nombre=o["nombre"], emoji="🏦", pagos=pagos, detalle=o.get("detalle", ""))
             cancelado = estado.cancelar_deuda_abierta(recibido)
             estado.efectivo -= cancelado
@@ -304,6 +316,10 @@ def aplicar_opcion(estado: Estado, op: OpcionMotor, inflacion: dict | None = Non
                 estado.efectivo -= resto
                 estado.nueva(tipo="inversion", nombre=o["inversion"], emoji="🏦", valor=resto, tasa=o["tasa_inversion"],
                              meses=o.get("meses_inversion", 1), detalle=o.get("detalle_inversion", ""))
+    for d, nombre in vincular:
+        inv = next((x for x in estado.de_tipo("inversion") if x.nombre == nombre and x.desde == mes), None)
+        if inv is not None:
+            d.paga_con = inv.id
     if estado.efectivo < 0:  # giro en descubierto
         estado.sumar_deuda_abierta(-estado.efectivo)
         estado.efectivo = 0.0
@@ -357,6 +373,14 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
         for pago in [x for x in d.pagos if x[0] == mes]:
             d.pagos.remove(pago)
             es_compra = d.tipo == "compra"
+            inv = next((x for x in estado.de_tipo("inversion") if x.id == d.paga_con), None)
+            if inv is not None and inv.valor >= 0.5:
+                x = min(inv.valor, pago[1])
+                inv.valor -= x
+                estado.efectivo += x
+                movs.append(mov(inv, "rescate", x, f"Sacaste {pesos_txt(x)} para la cuota de {d.nombre.lower()}"))
+                if inv.valor < 0.5:
+                    estado.posiciones.remove(inv)
             if es_compra:
                 compras += pago[1]
             estado.pagar(pago[1], d.nombre.lower() if es_compra else f"la cuota de {d.nombre.lower()}", d)
@@ -557,6 +581,9 @@ def cartera(estado: Estado) -> list[dict]:
                 cuando = "después del viaje"
             verbo = {"deuda_cuotas": "Próxima cuota", "a_cobrar": "Cobrás", "compra": "Pagás"}[x.tipo]
             resto = f"; quedan {len(x.pagos)} cuotas" if x.tipo == "deuda_cuotas" and len(x.pagos) > 1 else ""
+            fondo = next((i for i in estado.de_tipo("inversion") if i.id == x.paga_con), None)
+            if fondo is not None:
+                resto += f"; sale de {fondo.nombre.lower()}"
             d["detalle"] = f"{verbo} {pesos_txt(prox[2])} {cuando}{resto}"
         out.append(d)
     return out
