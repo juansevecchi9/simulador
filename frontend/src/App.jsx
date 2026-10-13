@@ -77,8 +77,9 @@ export default function App() {
       {(pantalla === 'intro' || pantalla === 'juego') && <Juego key={partida} vistaInicial={vista} intro={pantalla === 'intro'} onTerminar={() => setPantalla('resumen')} />}
       {pantalla === 'resumen' && <Resumen key={partida} dni={vista.estudiante.dni} vista={vista} onSalir={salir} />}
       {pantalla === 'docente' && sesionDocente && <Panel sesion={sesionDocente} onSalir={salir} />}
-      {['intro', 'juego', 'resumen'].includes(pantalla) && vista && (
-        <ModoPrueba dni={vista.estudiante.dni} onCambio={(v) => { setPartida((n) => n + 1); irSegunVista(v) }} />
+      {['personaje', 'intro', 'juego', 'resumen'].includes(pantalla) && vista && (
+        <ModoPrueba dni={vista.estudiante.dni} onCambio={(v) => { setPartida((n) => n + 1); irSegunVista(v) }}
+          onBorrado={() => { guardar('dni', null); setVista(null); setPartida((n) => n + 1); setPantalla('ingreso') }} />
       )}
     </main>
   )

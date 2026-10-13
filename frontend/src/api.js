@@ -17,6 +17,7 @@ const post = (ruta, body) => pedir(ruta, { method: 'POST', body: JSON.stringify(
 
 export const api = {
   salud: () => pedir('/api/salud'),
+  borrar: (dni) => post(`/api/prueba/${dni}/borrar`, {}),
   reiniciar: (dni) => post(`/api/prueba/${dni}/reiniciar`, {}),
   saltar: (dni, mes) => post(`/api/prueba/${dni}/saltar`, { mes }),
   ingresoAlumno: (dni, nombre, cursoId) => post('/api/alumnos/ingreso', { dni: Number(dni), nombre, curso_id: Number(cursoId) }),

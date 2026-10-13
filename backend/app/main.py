@@ -91,6 +91,17 @@ def prueba_reiniciar(dni: int, db: Session = Depends(get_db)):
     return servicios.vista_alumno(db, est)
 
 
+@app.post("/api/prueba/{dni}/borrar")
+def prueba_borrar(dni: int, db: Session = Depends(get_db)):
+    """Borra al alumno con todo su recorrido, para volver a crearlo desde el ingreso."""
+    _solo_prueba()
+    est = _estudiante(db, dni)
+    servicios.reiniciar(db, est)
+    db.delete(est)
+    db.commit()
+    return {"ok": True}
+
+
 @app.post("/api/prueba/{dni}/saltar")
 def prueba_saltar(dni: int, body: Salto, db: Session = Depends(get_db)):
     """Reinicia y responde automaticamente con la opcion acertada hasta el mes pedido."""

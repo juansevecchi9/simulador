@@ -5,7 +5,7 @@ import { Emo } from './emoji'
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 /** Solo para validar el contenido: reiniciar la partida o saltar a un mes. */
-export default function ModoPrueba({ dni, onCambio }) {
+export default function ModoPrueba({ dni, onCambio, onBorrado }) {
   const [activo, setActivo] = useState(false)
   const [abierto, setAbierto] = useState(false)
   const [mes, setMes] = useState(2)
@@ -26,8 +26,12 @@ export default function ModoPrueba({ dni, onCambio }) {
         <div className="modo-prueba-panel">
           <b>Modo prueba</b>
           <small>Solo para revisar el contenido. Se apaga antes de la prueba piloto.</small>
-          <button className="secundario" disabled={trabajando} onClick={() => hacer(() => api.reiniciar(dni))}>
-            Reiniciar mi partida
+          <button className="secundario" disabled={trabajando} onClick={async () => {
+            setTrabajando(true)
+            try { await api.borrar(dni); onBorrado() } catch (err) { alert(err.message) }
+            setTrabajando(false)
+          }}>
+            Empezar de cero (crear el usuario de nuevo)
           </button>
           <div className="modo-prueba-salto">
             <select value={mes} onChange={(e) => setMes(+e.target.value)} aria-label="Mes al que saltar">
