@@ -73,7 +73,7 @@ class HudEscena extends Phaser.Scene {
       t.yBarra = chico ? H - 4 - pad - 8 : yValor + 32
       t.hBarra = chico ? 7 : 10
       t.barra = this.add.graphics()
-      if (!chico) t.ayuda = this.texto(x + pad, t.yBarra + 15, '', 11, C.suave, '500')
+      if (!chico) t.ayuda = this.texto(x + pad, t.yBarra + 15, '', 11, C.suave, '500').setWordWrapWidth(tw - pad * 2).setLineSpacing(-2)
       t.chip = this.add.container(0, 0)
       this.tiles.push(t)
     }
@@ -99,7 +99,7 @@ class HudEscena extends Phaser.Scene {
       const fondo = this.add.graphics().fillStyle(sube ? 0xd9f2e3 : 0xfcebeb, 1)
         .fillRoundedRect(-tx.width - 6, -1, tx.width + 12, tx.height + 2, 8)
       // En pantallas anchas el cambio va en el renglon de abajo, a la derecha; en celular, arriba.
-      t.chip.add([fondo, tx.setX(0)]).setPosition(t.x + t.w - t.pad - 6, t.chico ? t.pad : t.yBarra + 15)
+      t.chip.add([fondo, tx.setX(0)]).setPosition(t.x + t.w - t.pad - 6, t.chico ? t.pad : t.yBarra - 3)
       t.anchoChip = tx.width + 16
       t.chip.setScale(0.6).setAlpha(0)
       this.tweens.add({ targets: t.chip, scale: 1, alpha: 1, duration: 380, ease: 'Back.out' })
@@ -108,16 +108,11 @@ class HudEscena extends Phaser.Scene {
 
   pintar() {
     if (!this.tiles) return
-    this.recortar = () => this.tiles.forEach((t) => {
-      if (!t.ayuda) return
-      const max = t.w - t.pad * 2 - (t.anchoChip || 0)
-      let txt = t.ayuda.text
-      while (t.ayuda.width > max && txt.length > 4) { txt = txt.slice(0, -2); t.ayuda.setText(`${txt.trimEnd()}…`) }
-    })
     const { barras: b, economia: e, enCierre } = this.d
     const v = this.v
     const [tP, tV, tC, tQ] = this.tiles
-    const ancho = (t) => t.w - t.pad * 2
+    // Las barras dejan lugar a la derecha para el cambio (+$X) si lo hay.
+    const ancho = (t) => t.w - t.pad * 2 - (t.anchoChip && !t.chico ? t.anchoChip + 6 : 0)
     const fondoBarra = (t) => t.barra.clear().fillStyle(C.niebla, 1).fillRoundedRect(t.x + t.pad, t.yBarra, ancho(t), t.hBarra, t.hBarra / 2)
 
     // Patrimonio neto: barra con el cero marcado (negativo hacia la izquierda, en rojo)
@@ -155,15 +150,14 @@ class HudEscena extends Phaser.Scene {
     const necesita = e.cuota_viaje * (1 + atrasadas)
     const alcanza = enCierre || b.efectivo >= necesita
     tQ.valor.setText(tQ.chico ? pesos(v.ef) : `${pesos(v.ef)} de ${pesos(necesita)}`).setColor(alcanza ? C.tinta : '#b45309')
-    if (!tQ.chico && tQ.valor.width > ancho(tQ)) tQ.valor.setText(pesos(v.ef))
+    if (!tQ.chico && tQ.valor.width > tQ.w - tQ.pad * 2) tQ.valor.setText(pesos(v.ef))
     fondoBarra(tQ)
     const fq = Math.min(1, Math.max(0, v.ef) / necesita)
     if (fq > 0) tQ.barra.fillStyle(alcanza ? C.sol : C.warn, 1).fillRoundedRect(tQ.x + tQ.pad, tQ.yBarra, Math.max(tQ.hBarra, ancho(tQ) * fq), tQ.hBarra, tQ.hBarra / 2)
     if (tQ.ayuda) {
-      if (b.deuda > 0) tQ.ayuda.setText(`Debés ${pesos(b.deuda)} en total`).setColor('#a32d2d').setFontStyle('700')
+      if (b.deuda > 0) tQ.ayuda.setText(`Debés ${pesos(b.deuda)} en total (mirá tu cartera)`).setColor('#a32d2d').setFontStyle('700')
       else tQ.ayuda.setText(enCierre ? 'Antes de cobrar el sueldo' : alcanza ? 'Te alcanza para la cuota' : 'Todavía no te alcanza').setColor(C.suave).setFontStyle('500')
     }
-    this.recortar()
   }
 }
 

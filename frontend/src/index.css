@@ -99,9 +99,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
 
 /* ---------- escena + hud */
 .escenario-col { grid-area: esc; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 14px; min-height: 0; }
-.escena { width: min(100%, calc((100dvh - 64px - 34px - 28px - 24px - 118px - 56px) * 16 / 9)); aspect-ratio: 16 / 9; align-self: center; flex: none; border-radius: 20px; overflow: hidden; background: var(--cielo); box-shadow: 0 0 0 4px #fff, 0 10px 24px rgba(18,52,63,.14); }
+.escena { width: min(100%, calc((100dvh - 64px - 34px - 28px - 24px - 128px - 56px) * 16 / 9)); aspect-ratio: 16 / 9; align-self: center; flex: none; border-radius: 20px; overflow: hidden; background: var(--cielo); box-shadow: 0 0 0 4px #fff, 0 10px 24px rgba(18,52,63,.14); }
 .escena canvas { display: block; }
-.hud-phaser { height: 118px; width: 100%; flex: none; }
+.hud-phaser { height: 128px; width: 100%; flex: none; }
 .hud-phaser canvas { display: block; }
 
 /* ---------- panel de la historia */
