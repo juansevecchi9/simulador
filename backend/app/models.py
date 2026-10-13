@@ -21,7 +21,7 @@ class Estudiante(Base):
     estudiante_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)  # DNI
     nombre: Mapped[str] = mapped_column(String(60))
     curso_id: Mapped[int] = mapped_column(ForeignKey("curso.curso_id"))
-    variante_personaje: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    variante_personaje: Mapped[str | None] = mapped_column(String(40), nullable=True)  # apariencia elegida
     mes_actual: Mapped[int] = mapped_column(Integer, default=1)
     fecha_inicio: Mapped[date] = mapped_column(Date, default=date.today)
 

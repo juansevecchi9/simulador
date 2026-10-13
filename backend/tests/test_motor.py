@@ -111,20 +111,42 @@ def test_descubierto_pasa_a_deuda():
     assert e.efectivo == 0 and e.deuda == 20_000
 
 
-def test_criterio_es_promedio_corrido():
+def test_criterio_arranca_en_50_y_se_mueve_de_a_poco():
     e = motor.Estado(efectivo=1e9)
+    assert motor.criterio_pct(e) == 50
     for c in ["acertada", "riesgosa", "acertada", "incorrecta"]:
         motor.aplicar_opcion(e, motor.OpcionMotor(0, 0, 0, c, None))
-    assert motor.criterio_pct(e) == 50
+    assert motor.criterio_pct(e) == 50 + 3 - 1 + 3 - 3
+    for _ in range(30):
+        motor.aplicar_opcion(e, motor.OpcionMotor(0, 0, 0, "incorrecta", None))
+    assert motor.criterio_pct(e) == 0
 
 
-def test_avatar():
+def test_avatar_cinco_expresiones():
+    e = motor.Estado(efectivo=0, deuda=150_000)
+    assert motor.estado_avatar(e) == "triste"
     e = motor.Estado(efectivo=0, deuda=5_000)
-    assert motor.estado_avatar(e) == "alerta"
-    e = motor.Estado(efectivo=100_000, patrimonio_mes_anterior=50_000)
-    assert motor.estado_avatar(e) == "tranquilo"
-    e = motor.Estado(efectivo=100_000, patrimonio_mes_anterior=120_000)
+    assert motor.estado_avatar(e) == "preocupado"
+    e = motor.Estado(efectivo=100_000)
+    assert motor.estado_avatar(e) == "neutral"  # todavia no decidio
+    e.decisiones, e.acertadas = 19, 19
+    assert motor.estado_avatar(e) == "euforico"
+    e.acertadas, e.riesgosas = 2, 17
     assert motor.estado_avatar(e) == "neutral"
+
+
+def test_perfil_que_completa_el_viaje_con_buen_criterio_festeja():
+    elegir = iter(range(24))
+    ops = _ops(lambda esc: _por_clasif("acertada")(esc) if next(elegir) % 5 else _por_clasif("riesgosa")(esc))
+    e = motor.simular(P, INF, ops)
+    assert motor.avance_viaje_pct(P, e.cuotas_pagadas) == 100 and motor.estado_avatar(e) == "euforico"
+
+
+def test_feedback_tiene_consecuencia_y_explicacion():
+    for esc in contenido.ESCENARIOS:
+        for o in esc["opciones"]:
+            consecuencia, sep, explicacion = o["mensaje_feedback"].partition(contenido.SEPARADOR_FEEDBACK)
+            assert sep and consecuencia.strip() and len(explicacion) > 120
 
 
 # ------------------------------------------------------------ API de punta a punta
@@ -149,21 +171,27 @@ def test_recorrido_completo_y_panel(client):
     r = client.post("/api/alumnos/ingreso", json={"dni": 40111222, "nombre": "Ana", "curso_id": 1001}).json()
     assert r["escenario"]["mes"] == 1 and r["barras"]["avance_viaje_pct"] == 10.0
     assert all("clasificacion" not in o for o in r["escenario"]["opciones"])
-    client.post("/api/alumnos/40111222/personaje", json={"variante": "mujer"})
+    assert client.post("/api/alumnos/40111222/personaje", json={"variante": "hack"}).status_code == 422
+    client.post("/api/alumnos/40111222/personaje", json={"variante": "mujer.1.2.3.4.5.6"})
+    assert "{nombre}" not in r["escenario"]["texto_situacion"] and "Ana" in r["escenario"]["texto_situacion"]
     rng = random.Random(3)
     for paso in range(24):
         est = client.get("/api/alumnos/40111222/estado").json()
         assert est["escenario"]["mes"] == paso // 2 + 1
         op = rng.choice(est["escenario"]["opciones"])["opcion_id"]
         res = client.post("/api/alumnos/40111222/decisiones", json={"opcion_id": op, "tiempo_resolucion": 20}).json()
-        assert res["mensaje"] and (res["cierre_mes"] is not None) == (paso % 2 == 1)
+        assert res["consecuencia"] and res["explicacion"] and res["siguiente"] and (res["cierre_mes"] is not None) == (paso % 2 == 1)
     assert res["terminado"]
     # reingreso con el mismo DNI continua donde lo dejo y conserva el personaje
     r2 = client.post("/api/alumnos/ingreso", json={"dni": 40111222, "nombre": "Ana", "curso_id": 1001}).json()
-    assert r2["terminado"] and r2["estudiante"]["variante_personaje"] == "mujer"
+    assert r2["terminado"] and r2["estudiante"]["variante_personaje"] == "mujer.1.2.3.4.5.6"
+    assert client.post("/api/alumnos/40111222/personaje", json={"variante": "varon"}).json()["estudiante"][
+        "variante_personaje"] == "mujer.1.2.3.4.5.6"
+    hist = client.get("/api/alumnos/40111222/historial").json()
+    assert len(hist) == 24 and all(h["elegida_id"] in [o["opcion_id"] for o in h["opciones"]] for h in hist)
     resumen = client.get("/api/alumnos/40111222/resumen").json()
     assert sum(f["acertadas"] + f["riesgosas"] + f["incorrectas"] for f in resumen["por_eje"]) == 24
-    assert resumen["punto_fuerte"]["importancia"] and resumen["punto_debil"]["importancia"]
+    assert resumen["puntos_fuertes"] and all(f["importancia"] for f in resumen["puntos_fuertes"])
 
     cur = client.post("/api/docente/ingreso", json={"codigo_acceso": "doce2026"}).json()
     g = client.get(f"/api/docente/cursos/{cur['curso_id']}/general", params={"codigo": "DOCE2026"}).json()

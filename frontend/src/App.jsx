@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
-import { ElegirPersonaje, IngresoAlumno, Intro, Juego, Resumen } from './Alumno'
+import { ElegirPersonaje, IngresoAlumno, Juego, Resumen } from './Alumno'
 import { IngresoDocente, Panel } from './Docente'
 
 const leer = (k) => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } }
@@ -19,7 +19,7 @@ export default function App() {
   function irSegunVista(v) {
     setVista(v)
     guardar('dni', v.estudiante.dni)
-    if (!v.estudiante.variante_personaje) setPantalla('personaje')
+    if (!v.estudiante.variante_personaje || (!v.estudiante.variante_personaje.includes('.') && v.decisiones_tomadas === 0)) setPantalla('personaje')
     else if (v.terminado) setPantalla('resumen')
     else if (v.decisiones_tomadas === 0) setPantalla('intro')
     else setPantalla('juego')
@@ -32,8 +32,9 @@ export default function App() {
     setPantalla('inicio')
   }
 
+  const pantallaJuego = ['juego', 'intro', 'resumen'].includes(pantalla)
   return (
-    <main className="app">
+    <main className={pantallaJuego ? 'app app-juego' : pantalla === 'personaje' ? 'app app-ancha' : pantalla === 'docente' && sesionDocente ? 'app app-panel' : 'app'}>
       {pantalla === 'inicio' && (
         <section className="portada">
           <img src="/icon.svg" alt="" width="64" height="64" />
@@ -50,10 +51,9 @@ export default function App() {
         </section>
       )}
       {pantalla === 'ingreso' && <IngresoAlumno onIngreso={irSegunVista} volver={() => setPantalla('inicio')} />}
-      {pantalla === 'personaje' && <ElegirPersonaje dni={vista.estudiante.dni} onElegido={irSegunVista} />}
-      {pantalla === 'intro' && <Intro vista={vista} onEmpezar={() => setPantalla('juego')} />}
-      {pantalla === 'juego' && <Juego vistaInicial={vista} onTerminar={() => setPantalla('resumen')} />}
-      {pantalla === 'resumen' && <Resumen dni={vista.estudiante.dni} variante={vista.estudiante.variante_personaje} onSalir={salir} />}
+      {pantalla === 'personaje' && <ElegirPersonaje vista={vista} onElegido={irSegunVista} />}
+      {(pantalla === 'intro' || pantalla === 'juego') && <Juego vistaInicial={vista} intro={pantalla === 'intro'} onTerminar={() => setPantalla('resumen')} />}
+      {pantalla === 'resumen' && <Resumen dni={vista.estudiante.dni} vista={vista} onSalir={salir} />}
       {pantalla === 'docente' && !sesionDocente && <IngresoDocente onIngreso={setSesionDocente} volver={() => setPantalla('inicio')} />}
       {pantalla === 'docente' && sesionDocente && <Panel sesion={sesionDocente} onSalir={salir} />}
     </main>

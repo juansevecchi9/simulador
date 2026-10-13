@@ -20,6 +20,7 @@ export const api = {
   elegirPersonaje: (dni, variante) => post(`/api/alumnos/${dni}/personaje`, { variante }),
   estado: (dni) => pedir(`/api/alumnos/${dni}/estado`),
   decidir: (dni, opcionId, tiempo) => post(`/api/alumnos/${dni}/decisiones`, { opcion_id: opcionId, tiempo_resolucion: tiempo }),
+  historial: (dni) => pedir(`/api/alumnos/${dni}/historial`),
   resumen: (dni) => pedir(`/api/alumnos/${dni}/resumen`),
   ingresoDocente: (codigo) => post('/api/docente/ingreso', { codigo_acceso: codigo }),
   panelGeneral: (cursoId, codigo) => pedir(`/api/docente/cursos/${cursoId}/general?codigo=${encodeURIComponent(codigo)}`),

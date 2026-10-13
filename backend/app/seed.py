@@ -2,7 +2,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import contenido
+from . import contenido, servicios
 from .db import Base, engine
 from .models import Curso, Escenario, InflacionMensual, Opcion, ParametroGlobal
 
@@ -38,3 +38,4 @@ def cargar_contenido(db: Session) -> None:
 def init_db(db: Session) -> None:
     Base.metadata.create_all(engine)
     cargar_contenido(db)
+    servicios.invalidar_catalogo()

@@ -53,6 +53,11 @@ class CierreMes:
     cuotas_atrasadas: int
     interes_deuda: float
     perdida_inflacion: float
+    efectivo_antes_cuota: float
+    efectivo_final: float
+    deuda_antes_interes: float
+    deuda_final: float
+    cuotas_pagadas_total: int
     patrimonio_neto: float
     avance_viaje_pct: float
     criterio_financiero_pct: float
@@ -66,6 +71,8 @@ class Estado:
     cuotas_atrasadas: int = 0
     decisiones: int = 0
     acertadas: int = 0
+    riesgosas: int = 0
+    incorrectas: int = 0
     mes_actual: int = 1
     orden_actual: int = 1
     terminado: bool = False
@@ -81,10 +88,15 @@ def avance_viaje_pct(p: dict, cuotas_pagadas: int) -> float:
     return round(100 * pagado / p["costo_total_viaje"], 1)
 
 
+# Criterio financiero: arranca en 50 y se mueve de a poco con cada decision.
+CRITERIO_INICIAL = 50
+PUNTOS_CRITERIO = {"acertada": 3, "riesgosa": -1, "incorrecta": -3}
+
+
 def criterio_pct(estado: Estado) -> float:
-    if estado.decisiones == 0:
-        return 0.0
-    return round(100 * estado.acertadas / estado.decisiones, 1)
+    valor = (CRITERIO_INICIAL + PUNTOS_CRITERIO["acertada"] * estado.acertadas
+             + PUNTOS_CRITERIO["riesgosa"] * estado.riesgosas + PUNTOS_CRITERIO["incorrecta"] * estado.incorrectas)
+    return float(max(0, min(100, valor)))
 
 
 def ingreso_del_mes(p: dict, mes: int) -> float:
@@ -105,16 +117,22 @@ def aplicar_opcion(estado: Estado, op: OpcionMotor) -> None:
     estado.decisiones += 1
     if op.clasificacion == "acertada":
         estado.acertadas += 1
+    elif op.clasificacion == "riesgosa":
+        estado.riesgosas += 1
+    else:
+        estado.incorrectas += 1
 
 
 def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes:
     estado.cuotas_atrasadas += 1
+    efectivo_antes = estado.efectivo
     pagadas = 0
     while estado.cuotas_atrasadas > 0 and estado.efectivo >= p["cuota_viaje"]:
         estado.efectivo -= p["cuota_viaje"]
         estado.cuotas_pagadas += 1
         estado.cuotas_atrasadas -= 1
         pagadas += 1
+    deuda_antes = estado.deuda
     interes = estado.deuda * p["tasa_deuda_abierta_mensual"]
     estado.deuda += interes
     perdida = estado.efectivo * inflacion
@@ -126,6 +144,11 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
         cuotas_atrasadas=estado.cuotas_atrasadas,
         interes_deuda=round(interes),
         perdida_inflacion=round(perdida),
+        efectivo_antes_cuota=round(efectivo_antes),
+        efectivo_final=round(estado.efectivo),
+        deuda_antes_interes=round(deuda_antes),
+        deuda_final=round(estado.deuda),
+        cuotas_pagadas_total=estado.cuotas_pagadas,
         patrimonio_neto=round(estado.patrimonio_neto()),
         avance_viaje_pct=avance_viaje_pct(p, estado.cuotas_pagadas),
         criterio_financiero_pct=criterio_pct(estado),
@@ -153,13 +176,25 @@ def simular(p: dict, inflacion: dict[int, float], opciones_elegidas: list[Opcion
     return estado
 
 
+ESTADOS_AVATAR = ("euforico", "contento", "neutral", "preocupado", "triste")
+
+
 def estado_avatar(estado: Estado) -> str:
-    """tranquilo / neutral / alerta segun el patrimonio neto (HU-008)."""
+    """Expresion del avatar (HU-008), segun tres cosas a la vez: si las cuotas del
+    viaje estan al dia, el patrimonio neto y el criterio financiero."""
     patrimonio = estado.patrimonio_neto()
-    if patrimonio < 0:
-        return "alerta"
-    if patrimonio > estado.patrimonio_mes_anterior and patrimonio > 20_000:
-        return "tranquilo"
+    criterio = criterio_pct(estado)
+    atrasadas = estado.cuotas_atrasadas
+    if atrasadas >= 2 or patrimonio < -100_000:
+        return "triste"
+    if atrasadas == 1 or patrimonio < 0:
+        return "preocupado"
+    if estado.decisiones == 0:
+        return "neutral"
+    if criterio >= 70 and patrimonio >= 50_000:
+        return "euforico"
+    if criterio >= 50:
+        return "contento"
     return "neutral"
 
 
@@ -170,4 +205,6 @@ def barras(p: dict, estado: Estado) -> dict:
         "deuda": round(estado.deuda),
         "avance_viaje_pct": avance_viaje_pct(p, estado.cuotas_pagadas),
         "criterio_financiero_pct": criterio_pct(estado),
+        "cuotas_pagadas": estado.cuotas_pagadas,
+        "cuotas_atrasadas": estado.cuotas_atrasadas,
     }

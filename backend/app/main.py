@@ -1,4 +1,5 @@
 import os
+import re
 from contextlib import asynccontextmanager
 from datetime import date
 
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from . import contenido, servicios
 from .db import SessionLocal, get_db
-from .models import Curso, Estudiante
+from .models import Curso, Decision, Estudiante
 from .seed import init_db
 
 
@@ -89,10 +90,11 @@ def ingreso_alumno(body: IngresoAlumno, db: Session = Depends(get_db)):
 
 @app.post("/api/alumnos/{dni}/personaje")
 def elegir_personaje(dni: int, body: Personaje, db: Session = Depends(get_db)):
-    if body.variante not in ("varon", "mujer"):
+    if not re.fullmatch(r"(varon|mujer)(\.[0-9]{1,2}){0,6}", body.variante):
         raise HTTPException(422, "Variante de personaje inválida.")
     est = _estudiante(db, dni)
-    if est.variante_personaje is None:  # se mantiene en sesiones posteriores (HU-017)
+    # Se puede ajustar la apariencia antes de la primera decision; despues se mantiene (HU-017).
+    if est.variante_personaje is None or not db.query(Decision).filter(Decision.estudiante_id == dni).first():
         est.variante_personaje = body.variante
         db.commit()
     return servicios.vista_alumno(db, est)
@@ -110,6 +112,11 @@ def decidir(dni: int, body: NuevaDecision, db: Session = Depends(get_db)):
         return servicios.registrar_decision(db, est, body.opcion_id, body.tiempo_resolucion)
     except ValueError as e:
         raise HTTPException(409, str(e))
+
+
+@app.get("/api/alumnos/{dni}/historial")
+def historial(dni: int, db: Session = Depends(get_db)):
+    return servicios.historial(db, _estudiante(db, dni))
 
 
 @app.get("/api/alumnos/{dni}/resumen")
