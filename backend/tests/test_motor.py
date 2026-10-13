@@ -301,3 +301,21 @@ def test_refinanciar_solo_la_deuda():
     assert e.deuda_abierta() == 0
     assert e.de_tipo("deuda_cuotas")[0].pagos[0][2] == 40_600
     assert e.de_tipo("inversion") == [] and e.efectivo == 10_000
+
+
+def test_prestamo_para_invertir_que_vence_junto():
+    """Préstamo y plazo fijo en pesos que vencen juntos: la inflación no cambia la cuenta,
+    solo le saca valor a la ganancia."""
+    e = motor.Estado(efectivo=0)
+    e.mes_actual = 11
+    op = motor.OpcionMotor(1, 0, 0, "acertada", None, [
+        {"op": "prestamo", "nombre": "Préstamo", "emoji": "🏦", "cuotas": [1_500, 101_500], "recibido": 100_000,
+         "desde": 0, "paga_con": "Plazo"},
+        {"op": "inversion", "nombre": "Plazo", "emoji": "🏦", "monto": 100_000, "tasa": 0.025, "meses": 2}])
+    motor.aplicar_opcion(e, op)
+    e.efectivo = 1_500  # para el interés del primer mes
+    motor.cerrar_mes(e, P, 11, 0.02)
+    motor.cerrar_mes(e, P, 12, 0.02)
+    assert e.deuda == 0 and e.de_tipo("inversion") == []
+    # $105.063 − $101.500 = $3.563 (más los $1.500 que pusiste) → gana $2.063, que pierden algo con la inflación
+    assert 3_450 < e.efectivo < 3_563

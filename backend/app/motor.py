@@ -281,7 +281,8 @@ def aplicar_opcion(estado: Estado, op: OpcionMotor, inflacion: dict | None = Non
         elif t == "prestamo":
             # Las deudas quedan fijas en pesos: la inflacion no las achica (el sueldo tampoco sube).
             estado.efectivo += o.get("recibido", 0)
-            pagos = [(mes + k, n, n) for k, n in enumerate(o["cuotas"], start=1)]
+            # desde: 0 = la primera cuota se paga en el cierre de este mes; 1 = el mes que viene.
+            pagos = [(mes + k, n, n) for k, n in enumerate(o["cuotas"], start=o.get("desde", 1))]
             d = estado.nueva(tipo="deuda_cuotas", nombre=o["nombre"], emoji=o.get("emoji", "🤝"), pagos=pagos,
                              detalle=o.get("detalle", ""))
             if o.get("paga_con"):
@@ -374,7 +375,7 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
             d.pagos.remove(pago)
             es_compra = d.tipo == "compra"
             inv = next((x for x in estado.de_tipo("inversion") if x.id == d.paga_con), None)
-            if inv is not None and inv.valor >= 0.5:
+            if inv is not None and inv.liquida and inv.valor >= 0.5:
                 x = min(inv.valor, pago[1])
                 inv.valor -= x
                 estado.efectivo += x
@@ -439,11 +440,14 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
 
     # 7. Inflacion: lo que tenes en pesos (plata e inversiones) compra menos. Lo que
     # debes queda fijo en pesos, igual que el sueldo: la inflacion no lo achica.
+    # Una inversion que respalda una deuda vinculada (mismos pesos, mismo plazo) no
+    # pierde en esa parte: la inflacion solo le saca valor a lo que sobra.
     f = 1 + inflacion
     pn_antes = estado.patrimonio_neto()
     estado.efectivo /= f
     for x in estado.de_tipo("inversion"):
-        x.valor /= f
+        cubierto = min(x.valor, sum(d.saldo() for d in estado.de_tipo("deuda_cuotas") if d.paga_con == x.id))
+        x.valor = cubierto + (x.valor - cubierto) / f
     perdida = pn_antes - estado.patrimonio_neto()
 
     cierre = CierreMes(
