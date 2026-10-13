@@ -535,7 +535,7 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
       <div className="escenario-col">
         <Escena ref={escenaRef} estado={estadoEscena} />
         <HudPhaser barras={barras} antes={barrasAntes} economia={vista.economia} enCierre={fase === 'cierre'} />
-        <div className="solo-ancho"><Cartera items={cartera} /></div>
+        <div className="solo-ancho"><Cartera items={cartera} compacta /></div>
       </div>
       <div className="panel-juego" ref={panel}>
         <div className="solo-angosto"><Cartera items={cartera} compacta /></div>
@@ -619,7 +619,7 @@ export function Resumen({ dni, vista, onSalir }) {
       <Encabezado economia={r.economia} mes={12} pagadas={b.cuotas_pagadas} atrasadas={b.cuotas_atrasadas} onHistorial={hist ? null : verHistorial} hayHistorial />
       <div className="escenario-col">
         <Escena estado={hist ? { ...estado, modo: 'escena', mes: hist[indice].mes, ...hist[indice].escena } : estado} />
-        <div className="solo-ancho"><Cartera items={r.cartera} /></div>
+        <div className="solo-ancho"><Cartera items={r.cartera} compacta /></div>
       </div>
       <div className="panel-juego">
         {hist && <Historial items={hist} indice={indice} setIndice={setIndice} onVolver={() => setHist(null)} textoVolver="Volver al final del viaje" />}

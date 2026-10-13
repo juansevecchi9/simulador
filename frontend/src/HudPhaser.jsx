@@ -73,7 +73,7 @@ class HudEscena extends Phaser.Scene {
       t.yBarra = chico ? H - 4 - pad - 8 : yValor + 32
       t.hBarra = chico ? 7 : 10
       t.barra = this.add.graphics()
-      if (!chico) t.ayuda = this.texto(x + pad, t.yBarra + 16, '', 11, C.suave, '500').setWordWrapWidth(tw - pad * 2)
+      if (!chico) t.ayuda = this.texto(x + pad, t.yBarra + 15, '', 11, C.suave, '500')
       t.chip = this.add.container(0, 0)
       this.tiles.push(t)
     }
@@ -107,6 +107,12 @@ class HudEscena extends Phaser.Scene {
 
   pintar() {
     if (!this.tiles) return
+    this.recortar = () => this.tiles.forEach((t) => {
+      if (!t.ayuda) return
+      const max = t.w - t.pad * 2
+      let txt = t.ayuda.text
+      while (t.ayuda.width > max && txt.length > 4) { txt = txt.slice(0, -2); t.ayuda.setText(`${txt.trimEnd()}…`) }
+    })
     const { barras: b, economia: e, enCierre } = this.d
     const v = this.v
     const [tP, tV, tC, tQ] = this.tiles
@@ -135,7 +141,7 @@ class HudEscena extends Phaser.Scene {
       else if (i < pagadas + atrasadas) tV.barra.fillStyle(0xffffff, 1).fillRoundedRect(x, tV.yBarra, seg, tV.hBarra, 2).lineStyle(2, C.rojo, 1).strokeRoundedRect(x + 1, tV.yBarra + 1, seg - 2, tV.hBarra - 2, 2)
       else tV.barra.fillStyle(C.niebla, 1).fillRoundedRect(x, tV.yBarra, seg, tV.hBarra, 2)
     }
-    tV.ayuda?.setText(atrasadas ? `${atrasadas} cuota${atrasadas > 1 ? 's' : ''} atrasada${atrasadas > 1 ? 's' : ''}` : `${Math.round(b.avance_viaje_pct)}% pagado, seña incluida`).setColor(atrasadas ? '#a32d2d' : C.suave)
+    tV.ayuda?.setText(atrasadas ? `${atrasadas} cuota${atrasadas > 1 ? 's' : ''} atrasada${atrasadas > 1 ? 's' : ''}` : `${Math.round(b.avance_viaje_pct)}% pagado con la seña`).setColor(atrasadas ? '#a32d2d' : C.suave)
 
     // Criterio financiero: 0 a 100, con la marca del 50 inicial
     tC.valor.setText(`${Math.round(v.cr)}/100`)
@@ -153,9 +159,10 @@ class HudEscena extends Phaser.Scene {
     const fq = Math.min(1, Math.max(0, v.ef) / necesita)
     if (fq > 0) tQ.barra.fillStyle(alcanza ? C.sol : C.warn, 1).fillRoundedRect(tQ.x + tQ.pad, tQ.yBarra, Math.max(tQ.hBarra, ancho(tQ) * fq), tQ.hBarra, tQ.hBarra / 2)
     if (tQ.ayuda) {
-      if (b.deuda > 0) tQ.ayuda.setText(`Debés ${pesos(b.deuda)}: crece ${e.tasa_deuda_abierta_pct}% por mes`).setColor('#a32d2d').setFontStyle('700')
-      else tQ.ayuda.setText(enCierre ? 'Antes de cobrar el próximo sueldo' : alcanza ? 'Hoy te alcanza para la cuota' : 'Hoy no te alcanza para la cuota').setColor(C.suave).setFontStyle('500')
+      if (b.deuda > 0) tQ.ayuda.setText(`Debés ${pesos(b.deuda)} en total`).setColor('#a32d2d').setFontStyle('700')
+      else tQ.ayuda.setText(enCierre ? 'Antes de cobrar el sueldo' : alcanza ? 'Te alcanza para la cuota' : 'Todavía no te alcanza').setColor(C.suave).setFontStyle('500')
     }
+    this.recortar()
   }
 }
 

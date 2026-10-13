@@ -99,9 +99,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
 
 /* ---------- escena + hud */
 .escenario-col { grid-area: esc; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 14px; min-height: 0; }
-.escena { width: min(100%, calc((100dvh - 64px - 34px - 28px - 24px - 118px - 128px) * 16 / 9)); aspect-ratio: 16 / 9; align-self: center; flex: none; border-radius: 20px; overflow: hidden; background: var(--cielo); box-shadow: 0 0 0 4px #fff, 0 10px 24px rgba(18,52,63,.14); }
+.escena { width: min(100%, calc((100dvh - 64px - 34px - 28px - 24px - 118px - 56px) * 16 / 9)); aspect-ratio: 16 / 9; align-self: center; flex: none; border-radius: 20px; overflow: hidden; background: var(--cielo); box-shadow: 0 0 0 4px #fff, 0 10px 24px rgba(18,52,63,.14); }
 .escena canvas { display: block; }
-.hud-phaser { height: 118px; width: 100%; }
+.hud-phaser { height: 118px; width: 100%; flex: none; }
 .hud-phaser canvas { display: block; }
 
 /* ---------- panel de la historia */
@@ -243,6 +243,15 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
 .cartera-compacta summary { cursor: pointer; list-style: none; }
 .cartera-compacta summary::-webkit-details-marker { display: none; }
 .cartera-compacta[open] summary { margin-bottom: 8px; }
+
+
+/* en pantallas anchas la cartera es un desplegable que se abre sobre la escena */
+.solo-ancho { flex: none; position: relative; }
+.solo-ancho .cartera-compacta { margin: 0; border: 0; padding: 10px 14px; box-shadow: 0 1px 0 var(--borde); }
+.solo-ancho .cartera-compacta summary, .solo-ancho .cartera-compacta[open] summary { font-size: 14px; margin: 0; }
+.solo-ancho .cartera-compacta summary::after { content: 'Ver detalle'; margin-left: auto; font-size: 12px; font-weight: 700; color: var(--mar); }
+.solo-ancho .cartera-compacta[open] summary::after { content: 'Ocultar'; }
+.solo-ancho .cartera-compacta[open] .cartera-lista { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 5; flex-wrap: wrap; background: var(--papel); border-radius: 16px; padding: 12px; box-shadow: 0 12px 30px rgba(18,52,63,.25); max-height: 55vh; overflow-y: auto; }
 
 /* movimientos del cierre */
 .movimientos { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
