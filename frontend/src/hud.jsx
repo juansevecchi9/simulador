@@ -79,13 +79,13 @@ export function Encabezado({ economia, mes, pagadas, atrasadas, onHistorial, hay
 }
 
 /** Indicadores del alumno (HU-005): patrimonio, viaje, criterio y plata para la cuota. */
-export function Hud({ barras, antes, economia }) {
+export function Hud({ barras, antes, economia, enCierre = false }) {
   const pn = useAnimado(barras.patrimonio_neto)
   const cr = useAnimado(barras.criterio_financiero_pct)
   const ef = useAnimado(barras.efectivo)
   const necesita = economia.cuota_viaje * (1 + (barras.cuotas_atrasadas || 0))
   const fraccionPn = Math.max(-1, Math.min(1, pn / 400000))
-  const alcanza = barras.efectivo >= necesita
+  const alcanza = enCierre || barras.efectivo >= necesita
   return (
     <div className="hud" role="group" aria-label="Tus indicadores">
       <div className={`hud-tile t-patrimonio ${pn < 0 ? 'negativo' : ''}`}>
@@ -119,7 +119,7 @@ export function Hud({ barras, antes, economia }) {
         <div className="barra" aria-hidden="true"><i className="relleno" style={{ width: `${Math.min(100, (100 * Math.max(0, ef)) / necesita)}%` }} /></div>
         {barras.deuda > 0
           ? <small className="hud-deuda"><Emo e="💳" size={14} /> Debés {pesos(barras.deuda)}: crece {economia.tasa_deuda_abierta_pct}% por mes</small>
-          : <small className="hud-ayuda">{alcanza ? 'Hoy te alcanza para la cuota' : 'Hoy no te alcanza para la cuota'}</small>}
+          : <small className="hud-ayuda">{enCierre ? 'Antes de cobrar el próximo sueldo' : alcanza ? 'Hoy te alcanza para la cuota' : 'Hoy no te alcanza para la cuota'}</small>}
       </div>
     </div>
   )

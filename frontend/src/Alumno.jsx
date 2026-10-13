@@ -408,7 +408,7 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
         onHistorial={fase === 'pregunta' ? abrirHistorial : null} hayHistorial={vista.decisiones_tomadas > 0} />
       <div className="escenario-col">
         <Escena ref={escenaRef} estado={estadoEscena} />
-        <Hud barras={barras} antes={barrasAntes} economia={vista.economia} />
+        <Hud barras={barras} antes={barrasAntes} economia={vista.economia} enCierre={fase === 'cierre'} />
       </div>
       <div className="panel-juego" ref={panel}>
         {fase === 'intro' && (
