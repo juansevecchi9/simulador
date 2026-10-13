@@ -19,6 +19,7 @@ const Escena = forwardRef(function Escena({ estado }, ref) {
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
       render: { antialias: true },
       audio: { noAudio: true },
+      banner: false,
     })
     return () => { juego.current?.destroy(true); juego.current = null }
   }, [])

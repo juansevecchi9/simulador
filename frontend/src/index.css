@@ -99,39 +99,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
 
 /* ---------- escena + hud */
 .escenario-col { grid-area: esc; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 14px; min-height: 0; }
-.escena { width: min(100%, calc((100dvh - 64px - 34px - 28px - 12px - 112px) * 16 / 9)); aspect-ratio: 16 / 9; align-self: center; flex: none; border-radius: 20px; overflow: hidden; background: var(--cielo); box-shadow: 0 0 0 4px #fff, 0 10px 24px rgba(18,52,63,.14); }
+.escena { width: min(100%, calc((100dvh - 64px - 34px - 28px - 12px - 118px) * 16 / 9)); aspect-ratio: 16 / 9; align-self: center; flex: none; border-radius: 20px; overflow: hidden; background: var(--cielo); box-shadow: 0 0 0 4px #fff, 0 10px 24px rgba(18,52,63,.14); }
 .escena canvas { display: block; }
-.hud { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.hud-tile { background: var(--papel); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; position: relative; border-bottom: 4px solid var(--borde); min-width: 0; overflow: hidden; }
-.hud-cab { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--suave); white-space: nowrap; }
-.hud-cab span:not(.cambio) { overflow: hidden; text-overflow: ellipsis; }
-.hud-valor { font-family: var(--display); font-size: 22px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
-.hud-valor small { font-size: 13px; font-weight: 600; color: var(--suave); }
-.hud-ayuda, .hud-deuda { font-size: 11px; color: var(--suave); line-height: 1.25; }
-.hud-deuda { color: #a32d2d; font-weight: 700; display: flex; gap: 4px; align-items: center; }
-.t-patrimonio { border-bottom-color: var(--azul); }
-.t-patrimonio.negativo .hud-valor { color: #c53030; }
-.t-viaje { border-bottom-color: var(--violeta); }
-.t-criterio { border-bottom-color: var(--ok); }
-.t-cuota { border-bottom-color: var(--sol); }
-.t-cuota.falta .hud-valor { color: #b45309; }
-.barra, .barra-cero { position: relative; height: 10px; border-radius: 6px; background: var(--niebla); overflow: hidden; }
-.barra .relleno, .barra-cero .relleno { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 6px; transition: width .9s cubic-bezier(.2,.8,.2,1), left .9s, right .9s; }
-.t-criterio .relleno { background: var(--ok); }
-.t-cuota .relleno { background: var(--sol); }
-.t-cuota.falta .relleno { background: var(--warn); }
-.barra .marca50 { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; background: var(--tinta); opacity: .35; }
-.barra-cero .cero { position: absolute; left: 33.3%; top: 0; bottom: 0; width: 2px; background: var(--tinta); opacity: .4; z-index: 1; }
-.t-patrimonio .relleno { background: var(--azul); }
-.t-patrimonio.negativo .relleno { background: var(--bad); left: auto; }
-.cuotas { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; }
-.cuotas i { height: 10px; border-radius: 3px; background: var(--niebla); transition: background .5s; }
-.cuotas i.pagada { background: var(--violeta); }
-.cuotas i.debe { background: #fff; box-shadow: inset 0 0 0 2px var(--bad); }
-.cambio { margin-left: auto; font-size: 12px; font-weight: 800; border-radius: 8px; padding: 0 6px; animation: aparecer-cambio .5s ease-out both; }
-.cambio.sube { background: #d9f2e3; color: #1a7a4c; }
-.cambio.baja { background: #fcebeb; color: #a32d2d; }
-@keyframes aparecer-cambio { from { transform: translateY(6px) scale(.8); opacity: 0; } }
+.hud-phaser { height: 118px; width: 100%; }
+.hud-phaser canvas { display: block; }
 
 /* ---------- panel de la historia */
 .panel-juego { grid-area: panel; overflow-y: auto; background: var(--papel); padding: 20px 22px 28px; border-left: 1px solid var(--borde); }
@@ -266,12 +237,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
   .btn-historial span { display: none; }
   .escenario-col { position: sticky; top: 104px; z-index: 2; background: var(--niebla); padding: 8px 10px; gap: 8px; }
   .escena { width: min(100%, calc(30vh * 16 / 9)); border-radius: 14px; box-shadow: 0 0 0 3px #fff; }
-  .hud { gap: 6px; }
-  .hud-tile { padding: 6px 8px; border-radius: 12px; gap: 2px; }
-  .hud-cab span:not(.cambio), .hud-ayuda, .hud-deuda { display: none; }
-  .hud-valor { font-size: 14px; } .hud-valor small { font-size: 10px; }
-  .t-cuota .hud-valor small { display: none; }
-  .cambio { font-size: 10px; }
+  .hud-phaser { height: 62px; }
   .panel-juego { border-left: 0; padding: 16px 14px 24px; }
   .impactos { grid-template-columns: 1fr 1fr; }
   .personalizar { grid-template-columns: 1fr; }
