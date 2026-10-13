@@ -42,7 +42,7 @@ export default function ModoPrueba({ dni, onCambio }) {
         </div>
       )}
       <button className="modo-prueba-boton" onClick={() => setAbierto(!abierto)} aria-expanded={abierto}>
-        <Emo e="🧪" size={18} /> Prueba
+        <Emo e="🧪" size={16} /> Prueba
       </button>
     </div>
   )

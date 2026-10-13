@@ -302,6 +302,18 @@ function CascadaMes({ c }) {
   )
 }
 
+/** Parte un texto largo en parrafos cortos (una idea por parrafo). */
+function Parrafos({ texto }) {
+  const oraciones = (texto || '').split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])/)
+  const grupos = []
+  for (const o of oraciones) {
+    const ultimo = grupos[grupos.length - 1]
+    if (ultimo && o.length < 40) grupos[grupos.length - 1] = `${ultimo} ${o}`
+    else grupos.push(o)
+  }
+  return <div className="parrafos">{grupos.map((g, i) => <p key={i}>{g}</p>)}</div>
+}
+
 function Resultado({ r, previo, onContinuar, textoBoton, economia }) {
   const s = SELLO[r.clasificacion]
   return (
@@ -311,12 +323,12 @@ function Resultado({ r, previo, onContinuar, textoBoton, economia }) {
       </div>
       <section className="historia">
         <h2><Emo e="🎬" size={22} /> Qué pasó en tu historia</h2>
-        <p>{r.consecuencia}</p>
+        <Parrafos texto={r.consecuencia} />
         <CambiosTablero r={r} previo={previo} economia={economia} />
       </section>
       <section className="porque">
         <h2><Emo e="💡" size={22} /> Por qué</h2>
-        <p>{r.explicacion}</p>
+        <Parrafos texto={r.explicacion} />
       </section>
       <button className="primario" onClick={onContinuar}>{textoBoton}</button>
     </div>
@@ -409,8 +421,8 @@ function Historial({ items, indice, setIndice, onVolver, textoVolver = 'Volver a
       <Dialogo escena={h.escena} texto={h.texto_situacion} />
       <Opciones opciones={h.opciones} elegida={h.elegida_id} deshabilitado />
       <div className={`sello sello-chico ${s.clase}`}><Emo e={s.emoji} size={22} /><span>{s.texto}</span></div>
-      <section className="historia"><h2><Emo e="🎬" size={22} /> Qué pasó en tu historia</h2><p>{h.consecuencia}</p></section>
-      <section className="porque"><h2><Emo e="💡" size={22} /> Por qué</h2><p>{h.explicacion}</p></section>
+      <section className="historia"><h2><Emo e="🎬" size={22} /> Qué pasó en tu historia</h2><Parrafos texto={h.consecuencia} /></section>
+      <section className="porque"><h2><Emo e="💡" size={22} /> Por qué</h2><Parrafos texto={h.explicacion} /></section>
       <button className="primario" onClick={onVolver}>{textoVolver}</button>
     </div>
   )
