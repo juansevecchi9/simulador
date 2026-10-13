@@ -221,6 +221,8 @@ function InicioMes({ esc, economia, barras, cartera = [] }) {
 function CambiosTablero({ r, previo, economia }) {
   const a = r.barras_antes
   const dEf = Math.round(previo.efectivo - a.efectivo)
+  const disp = previo.disponible ?? previo.efectivo
+  const dDisp = Math.round(disp - (a.disponible ?? a.efectivo))
   const dDeuda = Math.round(previo.deuda - a.deuda)
   const dInv = Math.round((previo.inversiones || 0) - (a.inversiones || 0))
   const dPn = Math.round(previo.patrimonio_neto - a.patrimonio_neto)
@@ -233,14 +235,14 @@ function CambiosTablero({ r, previo, economia }) {
   if (dDeuda > 0) partes.push(`tu deuda subió ${pesos(dDeuda)}`)
   if (dDeuda < 0) partes.push(`cancelaste ${pesos(-dDeuda)} de deuda`)
   const necesita = economia.cuota_viaje * (1 + (previo.cuotas_atrasadas || 0))
-  const falta = necesita - previo.efectivo
+  const falta = necesita - disp
   const cierraAhora = !!r.cierre_mes
   const filas = [
     ['💰', 'Patrimonio neto', firmado(dPn, pesos), dPn,
       partes.length ? `Porque ${partes.join(', ').replace(/, ([^,]*)$/, ' y $1')}. El patrimonio es lo que tenés (plata e inversiones) menos lo que debés.` : 'Esta decisión no movió tu plata, tus inversiones ni tu deuda.'],
-    ['🐷', 'Efectivo disponible para la cuota', firmado(dEf, pesos), dEf,
-      falta > 0 ? `Tenés ${pesos(previo.efectivo)} y al cierre se pagan ${pesos(necesita)}: faltan ${pesos(falta)}. Si no llegás, la cuota queda atrasada.`
-        : `Tenés ${pesos(previo.efectivo)} y al cierre se pagan ${pesos(necesita)}: por ahora te alcanza.`],
+    ['🐷', 'Disponible para la cuota', firmado(dDisp, pesos), dDisp,
+      falta > 0 ? `Tenés ${pesos(disp)} disponibles (efectivo e inversiones que sacás en el día) y al cierre se pagan ${pesos(necesita)}: faltan ${pesos(falta)}. Si no llegás, la cuota queda atrasada.`
+        : `Tenés ${pesos(disp)} disponibles (efectivo e inversiones que sacás en el día) y al cierre se pagan ${pesos(necesita)}: por ahora te alcanza.`],
     ['✈️', 'Viaje', cierraAhora ? 'se define ahora' : 'sin cambios', 0,
       cierraAhora ? 'Con esta decisión se cierra el mes: ahora se ve si la cuota se paga.' : 'Las cuotas se pagan en el cierre del mes, después de tu próxima decisión.'],
     ['🧭', 'Criterio financiero', dCr ? firmado(dCr) : '0', dCr,
@@ -463,6 +465,7 @@ function barrasCierre(r) {
     // el patrimonio incluye las inversiones y lo que te deben, no solo el efectivo
     patrimonio_neto: c.patrimonio_final,
     inversiones: c.patrimonio_final - c.efectivo_final + c.deuda_final,
+    disponible: c.efectivo_final + (c.cartera || []).filter((x) => x.tipo === 'inversion' && x.liquida).reduce((t, x) => t + x.valor, 0),
     cuotas_pagadas: c.cuotas_pagadas_total,
     cuotas_atrasadas: c.cuotas_atrasadas,
     avance_viaje_pct: c.avance_viaje_pct,
@@ -554,7 +557,7 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
         onHistorial={fase === 'pregunta' ? abrirHistorial : null} hayHistorial={vista.decisiones_tomadas > 0} />
       <div className="escenario-col">
         <Escena ref={escenaRef} estado={estadoEscena} />
-        <HudPhaser barras={barras} antes={barrasAntes} economia={vista.economia} enCierre={fase === 'cierre'} />
+        <HudPhaser barras={barras} antes={barrasAntes} economia={vista.economia} enCierre={fase === 'cierre'} cartera={cartera} />
         <div className="solo-ancho"><Cartera items={cartera} compacta /></div>
       </div>
       <div className="panel-juego" ref={panel}>

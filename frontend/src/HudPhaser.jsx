@@ -1,7 +1,7 @@
 // Barras de indicadores del alumno (HU-005) dibujadas y animadas con Phaser.
 // El lienzo usa el tamaño real de su contenedor (modo RESIZE), asi los textos
 // se ven nitidos y legibles tanto en la computadora como en el celular.
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import { pesos } from './api'
 import { codigoEmoji } from './emoji'
@@ -34,7 +34,7 @@ class HudEscena extends Phaser.Scene {
 
   actualizar(d) {
     if (!this.listo) return
-    const destino = { pn: d.barras.patrimonio_neto, cr: d.barras.criterio_financiero_pct, ef: d.barras.efectivo }
+    const destino = { pn: d.barras.patrimonio_neto, cr: d.barras.criterio_financiero_pct, ef: d.barras.disponible ?? d.barras.efectivo }
     const nuevo = !this.v
     this.d = d
     if (nuevo) this.v = { ...destino }
@@ -57,7 +57,7 @@ class HudEscena extends Phaser.Scene {
     const tw = (W - gap * 3) / 4
     const pad = chico ? 7 : 12
     const colores = [C.azul, C.violeta, C.verde, C.sol]
-    const etiquetas = ['Patrimonio neto', 'Viaje', 'Criterio financiero', 'Efectivo disponible']
+    const etiquetas = ['Patrimonio neto', 'Viaje', 'Criterio financiero', 'Disponible']
     this.tiles = []
     for (let i = 0; i < 4; i++) {
       const x = i * (tw + gap)
@@ -148,7 +148,7 @@ class HudEscena extends Phaser.Scene {
 
     // Plata para la cuota: efectivo frente a lo que hay que pagar al cierre
     const necesita = e.cuota_viaje * (1 + atrasadas)
-    const alcanza = enCierre || b.efectivo >= necesita
+    const alcanza = enCierre || (b.disponible ?? b.efectivo) >= necesita
     tQ.valor.setText(tQ.chico ? pesos(v.ef) : `${pesos(v.ef)} de ${pesos(necesita)}`).setColor(alcanza ? C.tinta : '#b45309')
     if (!tQ.chico && tQ.valor.width > tQ.w - tQ.pad * 2) tQ.valor.setText(pesos(v.ef))
     fondoBarra(tQ)
@@ -161,7 +161,68 @@ class HudEscena extends Phaser.Scene {
   }
 }
 
-export default function HudPhaser({ barras, antes, economia, enCierre }) {
+const ES_DEUDA = (t) => t === 'deuda_cuotas' || t === 'deuda_abierta'
+
+/** Desglose de cada indicador, para que no se pierda de donde sale cada numero. */
+function desglose(i, b, cartera, economia) {
+  const items = cartera || []
+  const fila = (texto, valor, clase = '') => ({ texto, valor, clase })
+  if (i === 0) {
+    return {
+      titulo: 'Patrimonio neto = lo que tenés - lo que debés',
+      filas: [
+        ...items.filter((x) => !ES_DEUDA(x.tipo) && x.tipo !== 'compra')
+          .map((x) => fila(`${x.emoji} ${x.nombre}`, `+${pesos(x.valor)}`, 'sube')),
+        ...items.filter((x) => ES_DEUDA(x.tipo)).map((x) => fila(`${x.emoji} ${x.nombre}`, `-${pesos(x.valor)}`, 'baja')),
+      ],
+      total: fila('Patrimonio neto', pesos(b.patrimonio_neto)),
+      nota: 'Las inversiones son tuyas aunque no sean efectivo: por eso suman.',
+    }
+  }
+  if (i === 1) {
+    return {
+      titulo: 'Viaje: lo que ya pagaste del total',
+      filas: [
+        fila('Seña', pesos(economia.sena_viaje)),
+        fila(`${b.cuotas_pagadas} cuota${b.cuotas_pagadas === 1 ? '' : 's'} × ${pesos(economia.cuota_viaje)}`, pesos(b.cuotas_pagadas * economia.cuota_viaje)),
+        ...(b.cuotas_atrasadas ? [fila(`${b.cuotas_atrasadas} cuota${b.cuotas_atrasadas > 1 ? 's' : ''} atrasada${b.cuotas_atrasadas > 1 ? 's' : ''}`, `${pesos(b.cuotas_atrasadas * economia.cuota_viaje)} por pagar`, 'baja')] : []),
+      ],
+      total: fila(`Pagado de ${pesos(economia.costo_total_viaje)}`, `${pesos(economia.sena_viaje + b.cuotas_pagadas * economia.cuota_viaje)} (${Math.round(b.avance_viaje_pct)}%)`),
+    }
+  }
+  if (i === 2) {
+    const a = b.acertadas || 0
+    const r = b.riesgosas || 0
+    const n = b.incorrectas || 0
+    return {
+      titulo: 'Criterio financiero: arranca en 50',
+      filas: [
+        fila('Punto de partida', '50'),
+        fila(`${a} acertada${a === 1 ? '' : 's'} × 3`, `+${3 * a}`, 'sube'),
+        fila(`${r} riesgosa${r === 1 ? '' : 's'} × 1`, `-${r}`, r ? 'baja' : ''),
+        fila(`${n} incorrecta${n === 1 ? '' : 's'} × 3`, `-${3 * n}`, n ? 'baja' : ''),
+      ],
+      total: fila('Criterio (entre 0 y 100)', `${Math.round(b.criterio_financiero_pct)}`),
+    }
+  }
+  const liquidas = items.filter((x) => x.tipo === 'inversion' && x.liquida)
+  const trabadas = items.filter((x) => (x.tipo === 'inversion' && !x.liquida) || x.tipo === 'a_cobrar')
+  const necesita = economia.cuota_viaje * (1 + (b.cuotas_atrasadas || 0))
+  return {
+    titulo: 'Disponible para pagar la cuota del cierre',
+    filas: [
+      fila('💵 Efectivo', pesos(b.efectivo)),
+      ...liquidas.map((x) => fila(`${x.emoji} ${x.nombre} (se saca en el día)`, `+${pesos(x.valor)}`, 'sube')),
+    ],
+    total: fila('Disponible', `${pesos(b.disponible ?? b.efectivo)} de ${pesos(necesita)}`),
+    nota: trabadas.length
+      ? `No cuentan porque no se pueden sacar todavía: ${trabadas.map((x) => `${x.nombre} (${pesos(x.valor)})`).join(', ')}.`
+      : 'Si te falta para la cuota, primero se saca de las inversiones que se sacan en el día.',
+  }
+}
+
+export default function HudPhaser({ barras, antes, economia, enCierre, cartera }) {
+  const [abierto, setAbierto] = useState(null)
   const contenedor = useRef(null)
   const juego = useRef(null)
 
@@ -189,8 +250,28 @@ export default function HudPhaser({ barras, antes, economia, enCierre }) {
   }, [firma]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const b = barras
+  const info = abierto != null ? desglose(abierto, b, cartera, economia) : null
+  const nombres = ['Patrimonio neto', 'Viaje', 'Criterio financiero', 'Disponible para la cuota']
   return (
-    <div className="hud-phaser" ref={contenedor} role="img"
-      aria-label={`Patrimonio neto ${pesos(b.patrimonio_neto)}. Viaje: ${b.cuotas_pagadas} de 12 cuotas pagadas. Criterio financiero ${Math.round(b.criterio_financiero_pct)} de 100. Efectivo disponible para la cuota ${pesos(b.efectivo)}.`} />
+    <div className="hud-envoltura" onMouseLeave={() => setAbierto(null)}>
+      <div className="hud-phaser" ref={contenedor} aria-hidden="true" />
+      <div className="hud-zonas">
+        {nombres.map((n, i) => (
+          <button key={n} type="button" className={`hud-zona ${abierto === i ? 'activa' : ''}`} aria-label={`${n}: ver de dónde sale`}
+            aria-expanded={abierto === i} onMouseEnter={() => setAbierto(i)} onFocus={() => setAbierto(i)}
+            onBlur={() => setAbierto(null)} onClick={() => setAbierto(abierto === i ? null : i)} />
+        ))}
+      </div>
+      {info && (
+        <div className={`hud-tooltip pos-${abierto}`} role="tooltip">
+          <b>{info.titulo}</b>
+          <ul>
+            {info.filas.map((f, k) => <li key={k} className={f.clase}><span>{f.texto}</span><span>{f.valor}</span></li>)}
+            <li className="total"><span>{info.total.texto}</span><span>{info.total.valor}</span></li>
+          </ul>
+          {info.nota && <small>{info.nota}</small>}
+        </div>
+      )}
+    </div>
   )
 }

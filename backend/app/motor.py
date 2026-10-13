@@ -507,15 +507,21 @@ def estado_avatar(estado: Estado) -> str:
 
 
 def barras(p: dict, estado: Estado) -> dict:
+    liquido = sum(x.valor for x in estado.de_tipo("inversion") if x.liquida)
     return {
         "patrimonio_neto": round(estado.patrimonio_neto()),
         "efectivo": round(estado.efectivo),
+        # efectivo + inversiones que se sacan en el dia (con eso se paga la cuota)
+        "disponible": round(estado.efectivo + liquido),
         "inversiones": round(estado.inversiones()),
         "deuda": round(estado.deuda),
         "avance_viaje_pct": avance_viaje_pct(p, estado.cuotas_pagadas),
         "criterio_financiero_pct": criterio_pct(estado),
         "cuotas_pagadas": estado.cuotas_pagadas,
         "cuotas_atrasadas": estado.cuotas_atrasadas,
+        "acertadas": estado.acertadas,
+        "riesgosas": estado.riesgosas,
+        "incorrectas": estado.incorrectas,
     }
 
 
@@ -529,7 +535,8 @@ def cartera(estado: Estado) -> list[dict]:
     out = [{"id": 0, "tipo": "efectivo", "nombre": "Tu plata", "emoji": "💵", "valor": round(estado.efectivo),
             "detalle": "Efectivo y cuenta: pierde valor con la inflación"}]
     for x in estado.posiciones:
-        d = {"id": x.id, "tipo": x.tipo, "nombre": x.nombre, "emoji": x.emoji, "valor": round(x.saldo())}
+        d = {"id": x.id, "tipo": x.tipo, "nombre": x.nombre, "emoji": x.emoji, "valor": round(x.saldo()),
+             "liquida": x.tipo == "inversion" and x.liquida}
         if x.tipo == "inversion":
             partes = []
             if x.tasas is None:
