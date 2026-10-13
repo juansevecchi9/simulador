@@ -370,9 +370,9 @@ ESCENARIOS = [
               [INV("Plazo fijo a 180 días", "🗓️", 40_000, tasa=0.03, meses=6)]),
              ("📊 Acciones de una empresa conocida: comprás una parte chiquita de la empresa, y su precio sube "
               "si le va bien y baja si le va mal.", 0, 0, I,
-              "Qué pasó después: al mes la acción había bajado y, como necesitabas la plata para la cuota, "
-              "vendiste: volvieron $15.000 de los $40.000.",
-              [INV("Acciones", "📊", 40_000, tasas=[-0.625], meses=1)]),
+              "Qué pasó después: la acción bajó justo cuando necesitabas la plata para la cuota y vendiste: "
+              "volvieron $15.000 de los $40.000. Perdiste $25.000.",
+              [EF(-25_000)]),
          ],
          "El fondo money market rinde poco, casi no tiene riesgo y la plata se saca el mismo día. El plazo fijo "
          "a 180 días rinde más, pero la plata queda inmovilizada justo cuando tenés cuotas que pagar. Las "
@@ -410,9 +410,9 @@ ESCENARIOS = [
               [EF(-50_000)]),
              ("📲 Poner tus $30.000 en una billetera virtual que paga 1% por día, para que crezcan hasta la fecha "
               "de pago.", 0, 0, R,
-              "Qué pasó después: la billetera congeló los retiros y a fin de mes recuperaste solo la mitad, "
+              "Qué pasó después: la billetera congeló los retiros y recuperaste solo la mitad, "
               "$15.000. Igual tuviste que pagar las excursiones, así que perdiste $15.000 de la plata del viaje.",
-              [EF(-50_000), INV("Billetera que paga 1% diario", "📲", 30_000, tasas=[-0.5], meses=1)]),
+              [EF(-65_000)]),
              ("⚽ Apostar tus $30.000 a que Argentina le gana a Bolivia, que paga 1,70: si gana, cobrás $51.000 y "
               "te sobra.", 0, 0, I,
               "Qué pasó después: empataron 1 a 1 y perdiste los $30.000. Igual tuviste que pagar las "
@@ -574,8 +574,7 @@ ESCENARIOS = [
               "que ya le funcionó con otros dos.", 0, 0, I,
               "Qué pasó después: las zapatillas no se vendieron y Carlitos no te pudo devolver la plata. Perdiste "
               "$30.000, un tercio de una cuota.",
-              [INV("Préstamo a Carlitos", "👟", 30_000, tasas=[-1.0], meses=1,
-                   detalle="Te devuelve $36.000 el mes que viene, si vende las zapatillas")]),
+              [EF(-30_000)]),
          ],
          "El plazo fijo paga 25% anual y la cuenta 24%: sobre $30.000 son $625 contra $600 por mes, apenas $25 de "
          "diferencia. A cambio, en el plazo fijo la plata queda trabada, y esta plata es para cubrir una cuota si "
@@ -613,18 +612,16 @@ ESCENARIOS = [
          "te pagás el viaje entero.",
          [
              ("🙅 No invertir, aunque Nico insista en que es la oportunidad del año.", 0, 0, A,
-              "Qué pasó con $ROCKET: el primer mes subió 40% y el segundo cayó 85% cuando sus creadores vendieron "
+              "Qué pasó con $ROCKET: primero subió 40% y después cayó 85% cuando sus creadores vendieron "
               "todo. Tu plata del viaje quedó a salvo."),
              ("🪙 Poner solo un poco de tus ahorros, $20.000, para no arriesgar demasiado.", 0, 0, R,
-              "Esta vez te salió bien: vendiste a tiempo, a fin de mes, y volvieron $40.000. Pero el mes "
-              "siguiente $ROCKET cayó 85%: si esperabas un mes más, perdías casi todo.",
-              [INV("Criptomoneda $ROCKET", "🚀", 20_000, tasas=[1.0], meses=1,
-                   detalle="Sube y baja muchísimo; la vendés a fin de mes")]),
+              "Esta vez te salió bien: se duplicó, vendiste a tiempo y ganaste $20.000. Pero después $ROCKET "
+              "cayó 85%: si esperabas un poco más, perdías casi todo.",
+              [EF(20_000)]),
              ("💰 Poner una parte importante de tus ahorros, $80.000, ya que viene subiendo fuerte.", 0, 0, I,
-              "Qué pasó con $ROCKET: el primer mes subió 40% y te entusiasmaste; el segundo cayó 85% cuando sus "
-              "creadores vendieron todo. De tus $80.000 volvieron $16.800.",
-              [INV("Criptomoneda $ROCKET", "🚀", 80_000, tasas=[0.4, -0.85], meses=2,
-                   detalle="Sube y baja muchísimo; la vendés en 2 meses")]),
+              "Qué pasó con $ROCKET: primero subió 40% y te entusiasmaste; después cayó 85% cuando sus "
+              "creadores vendieron todo. De tus $80.000 volvieron $16.800: perdiste $63.200.",
+              [EF(-63_200)]),
          ],
          "Una suba de 300% en un mes no dice nada de lo que va a pasar después: monedas nuevas como esta pueden "
          "caer casi a cero cuando sus creadores venden. Poner poco limita la pérdida, pero sigue siendo apostar "
@@ -647,8 +644,7 @@ ESCENARIOS = [
              ("🪙 Tomarlo y ponerlo en una plataforma cripto que paga 6% por mes.", 0, 0, R,
               "Qué pasó después: la plataforma frenó los retiros y recuperaste solo el 80%, pero al banco le "
               "devolvés los $101.500 completos.",
-              [PRESTAMO("Préstamo del banco", "🏦", [101_500], recibido=100_000),
-               INV("Plataforma cripto", "🪙", 100_000, tasas=[-0.2], meses=1)]),
+              [PRESTAMO("Préstamo del banco", "🏦", [101_500], recibido=100_000), EF(-20_000)]),
              ("🏦 Tomarlo y ponerlo en un plazo fijo al 18% anual, para no tenerlo quieto.", 0, 0, I,
               "Un 18% anual es 1,5% por mes: lo mismo que te cobra el préstamo. No ganaste nada y, con la "
               "inflación, perdiste poder de compra.",
@@ -670,8 +666,8 @@ ESCENARIOS = [
                INV("Fondo de bonos", "🧺", 25_000, tasa=0.025, liquida=True)]),
              ("📈 Ponerlos todos en acciones de una empresa que subió 80% este año y viene creciendo fuerte.",
               0, 0, R,
-              "Qué pasó después: la acción empezó a bajar y, como tenías todo ahí, cada mes perdiste una parte.",
-              [INV("Acciones de una sola empresa", "📈", 50_000, tasas=[-0.35, -0.15, 0.0])]),
+              "Qué pasó después: la acción bajó 40% y, como tenías todo ahí, perdiste $20.000.",
+              [EF(-20_000)]),
              ("🎓 Pagar $65.000 por un curso de inversiones que garantiza ganar 20% por mes en pesos.", 0, 0, I,
               "Pagaste $65.000 por el curso y nunca viste ese 20% mensual.",
               [EF(-65_000)]),
