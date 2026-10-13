@@ -7,7 +7,7 @@ import { dibujarFinal, dibujarFondo, dibujarRuta, emojiProps, estacion, H, W } f
 
 const EXTRA = ['🪙', '💸', '✨', '⭐', '🎆', '🎊', '❓', '💳', '🚌', '✈️', '☁️', '🌧️',
   // objetos de cada situacion
-  '📋', '👟', '🚲', '🎉', '📈', '🎂', '🏦', '💻', '🏔️', '🐖', '⏱️', '🧾', '📷', '🧮', '🎓', '🚀', '🧺', '🧥', '🔺']
+  '📋', '👟', '🚲', '🎉', '📈', '🎂', '🏦', '💻', '🏔️', '🐖', '⏱️', '🧾', '📷', '🧮', '🎓', '🚀', '🧺', '🧥', '🔺', '📸', '❤️', '🚀']
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const FUENTE = 'Bricolage Grotesque Variable, sans-serif'
 
@@ -135,6 +135,7 @@ export default class Escenario extends Phaser.Scene {
 
   ponerObjeto(e) {
     this.capaObjeto.removeAll(true)
+    if (e === 'insta') return this.posteInstagram()
     if (!e || !this.textures.exists(`emo-${e}`)) return
     const halo = this.add.circle(482, 392, 64, 0xffffff, 0.85).setStrokeStyle(4, 0x12343f)
     const img = this.add.image(482, 392, `emo-${e}`).setDisplaySize(92, 92)
@@ -144,6 +145,36 @@ export default class Escenario extends Phaser.Scene {
     this.tweens.add({ targets: halo, scale: 1, duration: 380, ease: 'Back.out' })
     this.tweens.add({ targets: img, scale: escala, duration: 420, ease: 'Back.out', delay: 80 })
     this.tweens.add({ targets: [img, halo], y: '-=10', duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: 500 })
+  }
+
+  /** Publicacion de Instagram del "inversor" (mes 3). */
+  posteInstagram() {
+    const c = this.add.container(482, 70)
+    const g = this.add.graphics()
+    const w = 230
+    g.fillStyle(0x000000, 0.18).fillRoundedRect(-w / 2 + 6, 6, w, 330, 18)
+    g.fillStyle(0xffffff, 1).fillRoundedRect(-w / 2, 0, w, 330, 18)
+    g.fillGradientStyle(0xf58529, 0xdd2a7b, 0x8134af, 0x515bd4, 1).fillCircle(-w / 2 + 26, 26, 16)
+    g.fillStyle(0xffffff, 1).fillCircle(-w / 2 + 26, 26, 12)
+    g.fillStyle(0x12343f, 1).fillCircle(-w / 2 + 26, 26, 10)
+    g.fillGradientStyle(0x0b3d2e, 0x0b3d2e, 0x157a52, 0x157a52, 1).fillRect(-w / 2, 50, w, 190)
+    g.lineStyle(5, 0x7dff9a, 1).beginPath()
+    const pts = [[-95, 220], [-60, 200], [-30, 205], [0, 170], [30, 150], [60, 110], [95, 70]]
+    g.moveTo(...pts[0]); pts.slice(1).forEach((p) => g.lineTo(...p)); g.strokePath()
+    g.fillStyle(0x3897f0, 1).fillCircle(48, 25, 7)
+    const t = (x, y, txt, tam, color, peso = '800') => this.add.text(x, y, txt, { fontFamily: 'Figtree Variable, sans-serif', fontSize: `${tam}px`, fontStyle: peso, color }).setResolution(2)
+    const usuario = t(-w / 2 + 50, 16, '@maxi.inversor', 15, '#12343f')
+    const tilde = t(44, 16, '✓', 11, '#ffffff')
+    const cifra = this.add.text(0, 92, '+12%\npor semana', { fontFamily: FUENTE, fontSize: '34px', fontStyle: '800', color: '#ffffff', align: 'center' }).setOrigin(0.5, 0).setResolution(2)
+    const cohete = this.add.image(78, 214, 'emo-🚀').setDisplaySize(36, 36)
+    const corazon = this.add.image(-w / 2 + 22, 262, 'emo-❤️').setDisplaySize(24, 24)
+    const likes = t(-w / 2 + 40, 252, '8.432 me gusta', 14, '#12343f')
+    const texto = t(-w / 2 + 12, 280, 'Mis alumnos ya cobraron.\nCupos limitados', 13, '#4f6670', '600')
+    c.add([g, usuario, tilde, cifra, cohete, corazon, likes, texto])
+    this.capaObjeto.add(c)
+    c.setScale(0.2).setAlpha(0)
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 450, ease: 'Back.out' })
+    this.tweens.add({ targets: corazon, scale: corazon.scale * 1.25, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' })
   }
 
   async ponerNpc({ personaje, personaje_nombre: nombre, personaje_rol: rol }) {

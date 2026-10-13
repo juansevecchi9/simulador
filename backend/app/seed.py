@@ -24,6 +24,9 @@ def cargar_contenido(db: Session) -> None:
             e.texto_situacion = esc["texto_situacion"]
             for j, op in enumerate(esc["opciones"], start=1):
                 o = db.get(Opcion, i * 10 + j)
+                if o is None:  # opcion agregada despues de la primera carga
+                    db.add(Opcion(opcion_id=i * 10 + j, escenario_id=i, **op))
+                    continue
                 for k, v in op.items():
                     setattr(o, k, v)
     for mes, pct in contenido.INFLACION_MENSUAL.items():

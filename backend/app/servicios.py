@@ -208,6 +208,10 @@ def _cierre_dict(c: motor.CierreMes, p: dict) -> dict:
         "deuda_final": c.deuda_final,
         "tasa_deuda_pct": round(100 * p["tasa_deuda_abierta_mensual"], 1),
         "avance_viaje_pct": c.avance_viaje_pct,
+        # Para el grafico de como cambio el patrimonio en el mes
+        "patrimonio_inicio": c.patrimonio_inicio,
+        "cobro_neto": c.cobro_neto,
+        "patrimonio_final": c.patrimonio_neto,
     }
 
 

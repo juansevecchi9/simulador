@@ -82,6 +82,7 @@ const NPC = {
   nico: { top: ['shaggyMullet'], hairColor: ['2c1b18'], skinColor: ['edb98a'], clothing: ['graphicShirt'], clothingGraphic: ['diamond'], clothesColor: ['262e33'] },
   sofi: { top: ['bob'], hairColor: ['2c1b18'], skinColor: ['ae5d29'], clothing: ['blazerAndShirt'], clothesColor: ['5199e4'] },
   laura: { top: ['straight01'], hairColor: ['b58143'], skinColor: ['ffdbb4'], clothing: ['blazerAndSweater'], clothesColor: ['3c4f5c'], accessories: ['round'], accessoriesColor: ['262e33'] },
+  carlitos: { top: ['shortCurly'], hairColor: ['b58143'], skinColor: ['d08b5b'], clothing: ['hoodie'], clothesColor: ['ff5c5c'] },
   flor: { top: ['bigHair'], hairColor: ['c93305'], skinColor: ['edb98a'], clothing: ['shirtVNeck'], clothesColor: ['ff488e'], accessories: ['wayfarers'], accessoriesColor: ['ff488e'] },
 }
 

@@ -58,6 +58,8 @@ class CierreMes:
     deuda_antes_interes: float
     deuda_final: float
     cuotas_pagadas_total: int
+    patrimonio_inicio: float
+    cobro_neto: float
     patrimonio_neto: float
     avance_viaje_pct: float
     criterio_financiero_pct: float
@@ -77,6 +79,7 @@ class Estado:
     orden_actual: int = 1
     terminado: bool = False
     patrimonio_mes_anterior: float = 0.0
+    cobro_mes: float = 0.0
     cierres: list[CierreMes] = field(default_factory=list)
 
     def patrimonio_neto(self) -> float:
@@ -149,6 +152,8 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
         deuda_antes_interes=round(deuda_antes),
         deuda_final=round(estado.deuda),
         cuotas_pagadas_total=estado.cuotas_pagadas,
+        patrimonio_inicio=round(estado.patrimonio_mes_anterior),
+        cobro_neto=round(estado.cobro_mes),
         patrimonio_neto=round(estado.patrimonio_neto()),
         avance_viaje_pct=avance_viaje_pct(p, estado.cuotas_pagadas),
         criterio_financiero_pct=criterio_pct(estado),
@@ -164,7 +169,8 @@ def simular(p: dict, inflacion: dict[int, float], opciones_elegidas: list[Opcion
     for mes in range(1, 13):
         estado.mes_actual, estado.orden_actual = mes, 1
         estado.patrimonio_mes_anterior = estado.patrimonio_neto()
-        estado.efectivo += ingreso_del_mes(p, mes) - p["gastos_fijos_mensuales"]
+        estado.cobro_mes = ingreso_del_mes(p, mes) - p["gastos_fijos_mensuales"]
+        estado.efectivo += estado.cobro_mes
         for orden in (1, 2):
             estado.orden_actual = orden
             if not pendientes:

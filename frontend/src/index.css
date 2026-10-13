@@ -177,6 +177,47 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
 .cierre-acciones { opacity: 0; transition: opacity .4s; display: flex; flex-direction: column; }
 .cierre-acciones.visible { opacity: 1; }
 
+
+/* ritmo del mes */
+.ritmo { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.ritmo li { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 4px; border-radius: 10px; background: var(--niebla); color: var(--suave); font-size: 12px; font-weight: 700; white-space: nowrap; position: relative; }
+.ritmo li.hecha { background: #e3f6ec; color: #157a52; }
+.ritmo li.actual { background: var(--tinta); color: #fff; box-shadow: 0 3px 0 var(--sol); }
+.ritmo-icono { display: grid; }
+
+/* inicio del mes */
+.inicio-mes { border: 2px dashed var(--borde); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; animation: entrar .4s ease-out both; }
+.inicio-mes h2 { margin: 0 !important; }
+.inicio-mes ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.inicio-mes li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 14px; padding: 6px 8px; border-radius: 10px; background: var(--niebla); }
+.inicio-mes li b { font-family: var(--display); font-size: 15px; white-space: nowrap; }
+.inicio-mes li.sube b { color: #157a52; } .inicio-mes li.baja b { color: #b42525; }
+.al-cierre { margin: 4px 0 0; font-size: 12.5px; font-weight: 700; color: var(--suave); }
+.nota-mes { margin: 0; font-size: 14px; background: #fff8e1; border-radius: 10px; padding: 6px 10px; }
+
+/* como cambiaron los indicadores */
+.tablero { margin-top: 12px; border-top: 2px dashed var(--borde); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.tablero h3, .cascada h3 { margin: 0; font-family: var(--display); font-size: 15px; }
+.tablero-fila { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; animation: entrar .4s ease-out both; }
+.tablero-fila:nth-child(3) { animation-delay: .1s; } .tablero-fila:nth-child(4) { animation-delay: .2s; } .tablero-fila:nth-child(5) { animation-delay: .3s; }
+.tablero-fila b { font-size: 13.5px; }
+.tablero-fila p { margin: 0; font-size: 13.5px; color: var(--suave); line-height: 1.4; }
+.tablero-valor { font-family: var(--display); font-weight: 800; font-size: 15px; border-radius: 8px; padding: 2px 8px; background: var(--niebla); white-space: nowrap; }
+.tablero-valor.sube { background: #e3f6ec; color: #157a52; } .tablero-valor.baja { background: #fde7e7; color: #b42525; }
+
+/* cascada del patrimonio */
+.cascada { background: var(--papel); border: 2px solid var(--tinta); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; box-shadow: 4px 4px 0 var(--tinta); }
+.cascada-fila { display: grid; grid-template-columns: minmax(110px, 38%) 1fr auto; gap: 10px; align-items: center; font-size: 13px; animation: entrar .4s ease-out both; }
+.cascada-fila b { font-family: var(--display); font-size: 14px; white-space: nowrap; text-align: right; min-width: 86px; }
+.cascada-pista { position: relative; height: 16px; }
+.cascada-pista .cero { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--tinta); opacity: .3; }
+.cascada-pista .barra { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--borde); }
+.cascada-fila.total .barra { background: var(--azul); } .cascada-fila.total span { font-weight: 700; }
+.cascada-fila.sube .barra { background: var(--ok); } .cascada-fila.sube b { color: #157a52; }
+.cascada-fila.baja .barra { background: var(--bad); } .cascada-fila.baja b { color: #b42525; }
+.cascada-nota { margin: 4px 0 0; font-size: 13px; color: var(--suave); display: flex; gap: 6px; align-items: center; }
+@media (max-width: 900px) { .ritmo li { font-size: 11px; } .cascada-fila { grid-template-columns: 1fr auto; } .cascada-pista { grid-column: 1 / -1; grid-row: 2; } }
+
 /* intro */
 .reglas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .reglas li { display: flex; gap: 12px; align-items: center; background: var(--niebla); border-radius: 14px; padding: 10px 12px; font-size: 15px; }

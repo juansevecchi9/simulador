@@ -168,19 +168,130 @@ function Opciones({ opciones, elegida, deshabilitado, onElegir }) {
   )
 }
 
-function ImpactoChip({ emoji, etiqueta, antes, despues, formato, subirEsMalo = false }) {
-  const d = Math.round(despues - antes)
-  const bueno = subirEsMalo ? d < 0 : d > 0
+
+
+const PUNTOS = { acertada: 3, riesgosa: -1, incorrecta: -3 }
+const firmado = (n, f = (x) => x) => (n > 0 ? `+${f(n)}` : n < 0 ? `-${f(-n)}` : f(0))
+
+/** Las 4 etapas de cada mes, con la actual resaltada. */
+function RitmoMes({ etapa }) {
+  const etapas = [['cobro', '💵', 'Cobrás'], ['d1', '🤔', 'Decisión 1'], ['d2', '🤔', 'Decisión 2'], ['cierre', '📆', 'Cierre']]
+  const i = etapas.findIndex(([k]) => k === etapa)
   return (
-    <div className={`impacto ${d === 0 ? '' : bueno ? 'sube' : 'baja'}`}>
-      <Emo e={emoji} size={22} />
-      <span>{etiqueta}</span>
-      <b>{d === 0 ? 'sin cambios' : `${d > 0 ? '+' : ''}${formato(d)}`}</b>
+    <ol className="ritmo" aria-label="Etapas del mes">
+      {etapas.map(([k, e, t], n) => (
+        <li key={k} className={n < i ? 'hecha' : n === i ? 'actual' : ''} aria-current={n === i ? 'step' : undefined}>
+          <span className="ritmo-icono"><Emo e={n < i ? '✅' : e} size={18} /></span><span>{t}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+/** Lo que trae el mes: cobro, extras y lo que va a pasar en el cierre. */
+function InicioMes({ esc, economia, barras }) {
+  const atrasadas = barras.cuotas_atrasadas || 0
+  const cuota = economia.cuota_viaje * (1 + atrasadas)
+  const interes = Math.round(barras.deuda * economia.tasa_deuda_abierta_pct / 100)
+  const extra = esc.ingreso_del_mes - economia.ingreso_base_mensual
+  return (
+    <div className="inicio-mes">
+      <h2><Emo e="🗓️" size={22} /> Así arranca {nombreMes(esc.mes)}</h2>
+      <ul>
+        <li className="sube"><Emo e="🍕" size={20} /><span>{extra > 0 ? `Sueldo de la pizzería y ${pesos(extra)} extra` : extra < 0 ? `Sueldo de la pizzería, con ${pesos(-extra)} menos` : 'Sueldo de la pizzería'}</span><b>{firmado(esc.ingreso_del_mes, pesos)}</b></li>
+        <li className="baja"><Emo e="🧾" size={20} /><span>Gastos fijos (celular, transporte, comida)</span><b>{firmado(-economia.gastos_fijos_mensuales, pesos)}</b></li>
+      </ul>
+      {esc.nota_ingreso && <p className="nota-mes"><Emo e="🎁" size={18} /> {esc.nota_ingreso}</p>}
+      <p className="al-cierre">Al cierre del mes, después de tus dos decisiones:</p>
+      <ul>
+        <li><Emo e="✈️" size={20} /><span>Se paga {atrasadas ? `la cuota y ${atrasadas} atrasada${atrasadas > 1 ? 's' : ''}` : 'la cuota del viaje'}, si te alcanza</span><b>{pesos(cuota)}</b></li>
+        <li><Emo e="🏷️" size={20} /><span>La plata guardada pierde {economia.inflacion_mensual_pct}% por la inflación</span><b>-{economia.inflacion_mensual_pct}%</b></li>
+        {barras.deuda > 0 && <li className="baja"><Emo e="💳" size={20} /><span>Tu deuda de {pesos(barras.deuda)} crece {economia.tasa_deuda_abierta_pct}%</span><b>+{pesos(interes)}</b></li>}
+      </ul>
     </div>
   )
 }
 
-function Resultado({ r, previo, onContinuar, textoBoton }) {
+/** Explica en palabras como cambio cada indicador con la decision. */
+function CambiosTablero({ r, previo, economia }) {
+  const a = r.barras_antes
+  const dEf = Math.round(previo.efectivo - a.efectivo)
+  const dDeuda = Math.round(previo.deuda - a.deuda)
+  const dPn = Math.round(previo.patrimonio_neto - a.patrimonio_neto)
+  const dCr = Math.round(previo.criterio_financiero_pct - a.criterio_financiero_pct)
+  const partes = []
+  if (dEf < 0) partes.push(`salieron ${pesos(-dEf)} de tu plata`)
+  if (dEf > 0) partes.push(`entraron ${pesos(dEf)} a tu plata`)
+  if (dDeuda > 0) partes.push(`tu deuda subió ${pesos(dDeuda)}`)
+  if (dDeuda < 0) partes.push(`cancelaste ${pesos(-dDeuda)} de deuda`)
+  const necesita = economia.cuota_viaje * (1 + (previo.cuotas_atrasadas || 0))
+  const falta = necesita - previo.efectivo
+  const cierraAhora = !!r.cierre_mes
+  const filas = [
+    ['💰', 'Patrimonio neto', firmado(dPn, pesos), dPn,
+      partes.length ? `Porque ${partes.join(' y ')}. El patrimonio es lo que tenés menos lo que debés.` : 'Esta decisión no movió tu plata ni tu deuda.'],
+    ['🐷', 'Plata para la cuota', firmado(dEf, pesos), dEf,
+      falta > 0 ? `Tenés ${pesos(previo.efectivo)} y al cierre se pagan ${pesos(necesita)}: faltan ${pesos(falta)}. Si no llegás, la cuota queda atrasada.`
+        : `Tenés ${pesos(previo.efectivo)} y al cierre se pagan ${pesos(necesita)}: por ahora te alcanza.`],
+    ['✈️', 'Viaje', cierraAhora ? 'se define ahora' : 'sin cambios', 0,
+      cierraAhora ? 'Con esta decisión se cierra el mes: ahora se ve si la cuota se paga.' : 'Las cuotas se pagan en el cierre del mes, después de tu próxima decisión.'],
+    ['🧭', 'Criterio financiero', dCr ? firmado(dCr) : '0', dCr,
+      `Una decisión ${r.clasificacion} ${dCr === 0 && PUNTOS[r.clasificacion] > 0 ? 'suma 3, pero ya estabas en 100' : `${PUNTOS[r.clasificacion] > 0 ? 'suma' : 'resta'} ${Math.abs(PUNTOS[r.clasificacion])}`}. Acertada +3, riesgosa -1, incorrecta -3.`],
+  ]
+  return (
+    <div className="tablero">
+      <h3>Cómo cambiaron tus indicadores</h3>
+      {filas.map(([e, t, v, d, texto]) => (
+        <div className="tablero-fila" key={t}>
+          <Emo e={e} size={22} />
+          <div><b>{t}</b><p>{texto}</p></div>
+          <span className={`tablero-valor ${d > 0 ? 'sube' : d < 0 ? 'baja' : ''}`}>{v}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Grafico de cascada: como paso el patrimonio del inicio al final del mes. */
+function CascadaMes({ c }) {
+  const pagadas = c.cuotas_pagadas_en_cierre
+  const preCierre = c.efectivo_antes_cuota - c.deuda_antes_interes
+  const pasos = [
+    ['Sueldo menos gastos fijos', c.cobro_neto],
+    ['Tus dos decisiones', preCierre - c.patrimonio_inicio - c.cobro_neto],
+    [pagadas ? `Cuota${pagadas > 1 ? 's' : ''} del viaje` : 'Cuota del viaje (no se pagó)', -pagadas * c.cuota_viaje],
+    ['Inflación', -c.perdida_inflacion],
+    ['Intereses de la deuda', -c.interes_deuda],
+  ]
+  let acum = c.patrimonio_inicio
+  const filas = [['Empezaste el mes con', 0, acum, true]]
+  for (const [t, d] of pasos) { filas.push([t, acum, acum + d, false]); acum += d }
+  filas.push(['Terminaste el mes con', 0, c.patrimonio_final, true])
+  const valores = filas.flatMap(([, x, y]) => [x, y])
+  const min = Math.min(0, ...valores)
+  const max = Math.max(0, ...valores)
+  const pos = (v) => (100 * (v - min)) / (max - min || 1)
+  return (
+    <div className="cascada">
+      <h3>Así cambió tu patrimonio en {nombreMes(c.mes)}</h3>
+      {filas.map(([t, desde, hasta, total], i) => {
+        const d = Math.round(hasta - desde)
+        const izq = Math.min(pos(desde), pos(hasta))
+        const ancho = Math.max(0.6, Math.abs(pos(hasta) - pos(desde)))
+        return (
+          <div className={`cascada-fila ${total ? 'total' : d > 0 ? 'sube' : d < 0 ? 'baja' : 'cero'}`} key={i} style={{ animationDelay: `${i * 0.12}s` }}>
+            <span>{t}</span>
+            <div className="cascada-pista"><i className="cero" style={{ left: `${pos(0)}%` }} /><i className="barra" style={{ left: `${izq}%`, width: `${ancho}%` }} /></div>
+            <b>{total ? pesos(hasta) : firmado(d, pesos)}</b>
+          </div>
+        )
+      })}
+      {pagadas > 0 && <p className="cascada-nota"><Emo e="✈️" size={16} /> Pagar la cuota baja tu plata, pero suma al viaje: ya llevás {c.cuotas_pagadas_total} de 12.</p>}
+    </div>
+  )
+}
+
+function Resultado({ r, previo, onContinuar, textoBoton, economia }) {
   const s = SELLO[r.clasificacion]
   return (
     <div className="resultado">
@@ -190,12 +301,7 @@ function Resultado({ r, previo, onContinuar, textoBoton }) {
       <section className="historia">
         <h2><Emo e="🎬" size={22} /> Qué pasó en tu historia</h2>
         <p>{r.consecuencia}</p>
-        <div className="impactos">
-          <ImpactoChip emoji="💰" etiqueta="Patrimonio neto" antes={r.barras_antes.patrimonio_neto} despues={previo.patrimonio_neto} formato={pesos} />
-          <ImpactoChip emoji="🐷" etiqueta="Plata para la cuota" antes={r.barras_antes.efectivo} despues={previo.efectivo} formato={pesos} />
-          <ImpactoChip emoji="💳" etiqueta="Deuda" antes={r.barras_antes.deuda} despues={previo.deuda} formato={pesos} subirEsMalo />
-          <ImpactoChip emoji="🧭" etiqueta="Criterio financiero" antes={r.barras_antes.criterio_financiero_pct} despues={previo.criterio_financiero_pct} formato={(d) => `${d} pts`} />
-        </div>
+        <CambiosTablero r={r} previo={previo} economia={economia} />
       </section>
       <section className="porque">
         <h2><Emo e="💡" size={22} /> Por qué</h2>
@@ -240,6 +346,7 @@ function Cierre({ c, mesSiguiente, onContinuar, terminado }) {
   const escalaDeuda = Math.max(c.deuda_final, 1)
   return (
     <div className="cierre">
+      <RitmoMes etapa="cierre" />
       <h2 className="cierre-titulo"><Emo e="📆" size={28} /> Cierre de {nombreMes(c.mes)}</h2>
       <PasoCierre visible={paso >= 1} emoji="✈️" titulo={c.cuota_del_mes_pagada
         ? `Cuota del viaje pagada${pagadas > 1 ? ` (y ${pagadas - 1} atrasada${pagadas > 2 ? 's' : ''})` : ''}`
@@ -265,6 +372,7 @@ function Cierre({ c, mesSiguiente, onContinuar, terminado }) {
         ) : <p>No tenés tarjeta ni préstamos pendientes: nada te cobra intereses.</p>}
       </PasoCierre>
       <div className={`cierre-acciones ${paso >= 4 ? 'visible' : ''}`}>
+        {paso >= 4 && <CascadaMes c={c} />}
         <button className="primario" onClick={onContinuar} disabled={paso < 3}>
           {terminado ? 'Ver cómo terminó el viaje' : `Empezar ${nombreMes(mesSiguiente)}`}
         </button>
@@ -427,21 +535,16 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
         )}
         {fase === 'pregunta' && esc && (
           <div className="pregunta" key={esc.escenario_id}>
+            <RitmoMes etapa={esc.orden === 1 ? 'd1' : 'd2'} />
             <div className="paso-num">Decisión {esc.numero} de 24</div>
-            {esc.orden === 1 && esc.mes > 1 && (
-              <div className="cobro">
-                <Emo e="🍕" size={24} />
-                <span>Cobraste tu sueldo: <b className="sube">+{pesos(esc.ingreso_del_mes)}</b> y pagaste los gastos fijos: <b className="baja">-{pesos(vista.economia.gastos_fijos_mensuales)}</b></span>
-              </div>
-            )}
-            {esc.nota_ingreso && <div className="cobro cobro-extra"><Emo e="🎁" size={24} /><span>{esc.nota_ingreso}</span></div>}
+            {esc.orden === 1 && <InicioMes esc={esc} economia={vista.economia} barras={vista.barras} />}
             <Dialogo escena={esc.escena} texto={esc.texto_situacion} />
             <Opciones opciones={esc.opciones} deshabilitado={enviando} onElegir={elegir} />
             {error && <p className="error">{error}</p>}
           </div>
         )}
         {fase === 'resultado' && resultado && (
-          <Resultado r={resultado} previo={previo} onContinuar={avanzar}
+          <Resultado r={resultado} previo={previo} onContinuar={avanzar} economia={vista.economia}
             textoBoton={resultado.cierre_mes ? `Cerrar ${nombreMes(resultado.cierre_mes.mes)}` : 'Seguir con el mes'} />
         )}
         {fase === 'cierre' && resultado?.cierre_mes && (
