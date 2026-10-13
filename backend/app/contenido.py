@@ -641,10 +641,6 @@ ESCENARIOS = [
              ("🙅 No tomarlo: pedir prestado siempre sale más caro que no deber nada.", 0, 0, R,
               "No perdiste nada, pero si tenías deuda de tarjeta, siguió creciendo al 8% por mes cuando podías "
               "pasarla al 1,5%.", []),
-             ("🪙 Tomarlo y ponerlo en una plataforma cripto que paga 6% por mes.", 0, 0, R,
-              "Qué pasó después: la plataforma frenó los retiros y recuperaste solo el 80%, pero al banco le "
-              "devolvés los $101.500 completos.",
-              [PRESTAMO("Préstamo del banco", "🏦", [101_500], recibido=100_000), EF(-20_000)]),
              ("🏦 Tomarlo y ponerlo en un plazo fijo al 18% anual, para no tenerlo quieto.", 0, 0, I,
               "Un 18% anual es 1,5% por mes: lo mismo que te cobra el préstamo. No ganaste nada y, con la "
               "inflación, perdiste poder de compra.",
@@ -654,8 +650,7 @@ ESCENARIOS = [
          "Una deuda conviene si reemplaza una deuda más cara o si lo que te rinde es más de lo que te cuesta, "
          "sin riesgo. Este préstamo cobra 1,5% por mes: sirve para cancelar la tarjeta, que cobra 8%, y lo que "
          "sobra en un plazo fijo al 2,5% te deja ganancia. No tomarlo no te hace perder plata, pero deja pasar "
-         "esa diferencia. Ponerlo en una plataforma que promete 6% suma riesgo con plata prestada. Y el plazo "
-         "fijo al 18% anual es 18 ÷ 12 = 1,5% por mes: exactamente lo que cuesta el préstamo."),
+         "esa diferencia. Y el plazo fijo al 18% anual es 18 ÷ 12 = 1,5% por mes: exactamente lo que cuesta el préstamo."),
     _esc(11, 2, "ahorro", "banco", "laura", "🧺",
          "Tenés $50.000 ahorrados para cuando vuelvas del viaje y querés invertirlos. ¿Qué hacés?",
          [

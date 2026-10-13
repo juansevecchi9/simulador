@@ -1,10 +1,10 @@
 """Carga el contenido fijo (escenarios, opciones, inflacion, parametros) y un curso de ejemplo."""
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from . import contenido, servicios
 from .db import Base, engine
-from .models import Curso, Escenario, InflacionMensual, Opcion, ParametroGlobal
+from .models import Curso, Decision, Escenario, InflacionMensual, Opcion, ParametroGlobal
 
 CURSO_DEMO = {"curso_id": 1001, "nombre": "5° A - Ciencias Sociales", "codigo_acceso": "DOCE2026"}
 
@@ -37,6 +37,13 @@ def cargar_contenido(db: Session) -> None:
                     continue
                 for k, v in _campos(op).items():
                     setattr(o, k, v)
+        # Opciones que ya no estan en el contenido (se quitaron): se borran junto con
+        # las decisiones de prueba que las eligieron.
+        for i, esc in enumerate(contenido.ESCENARIOS, start=1):
+            for o in list(db.scalars(select(Opcion).where(Opcion.escenario_id == i,
+                                                          Opcion.opcion_id > i * 10 + len(esc["opciones"])))):
+                db.execute(delete(Decision).where(Decision.opcion_elegida_id == o.opcion_id))
+                db.delete(o)
     for mes, pct in contenido.INFLACION_MENSUAL.items():
         db.merge(InflacionMensual(mes=mes, porcentaje=pct))
     for clave, valor in contenido.PARAMETROS.items():
