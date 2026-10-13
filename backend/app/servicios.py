@@ -9,7 +9,7 @@ import random
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from . import contenido, motor
@@ -278,6 +278,23 @@ def registrar_decision(db: Session, est: Estudiante, opcion_id: int, tiempo: int
         "terminado": sig is None,
         "siguiente": _vista(db, est, pares),
     }
+
+
+def reiniciar(db: Session, est: Estudiante) -> None:
+    """Modo prueba: borra las decisiones y avances del alumno (conserva su personaje)."""
+    db.execute(delete(Decision).where(Decision.estudiante_id == est.estudiante_id))
+    db.execute(delete(AvanceMensual).where(AvanceMensual.estudiante_id == est.estudiante_id))
+    est.mes_actual = 1
+    db.commit()
+
+
+def responder_acertadas_hasta(db: Session, est: Estudiante, mes: int) -> None:
+    """Modo prueba: responde con la opcion acertada todas las decisiones anteriores al mes pedido."""
+    for esc in catalogo(db).escenarios:
+        if esc.mes >= mes:
+            break
+        op = next(o for o in esc.opciones if o.clasificacion == "acertada")
+        registrar_decision(db, est, op.opcion_id, 5)
 
 
 def historial(db: Session, est: Estudiante) -> list[dict]:

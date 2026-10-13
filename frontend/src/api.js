@@ -16,6 +16,9 @@ async function pedir(ruta, opciones = {}) {
 const post = (ruta, body) => pedir(ruta, { method: 'POST', body: JSON.stringify(body) })
 
 export const api = {
+  salud: () => pedir('/api/salud'),
+  reiniciar: (dni) => post(`/api/prueba/${dni}/reiniciar`, {}),
+  saltar: (dni, mes) => post(`/api/prueba/${dni}/saltar`, { mes }),
   ingresoAlumno: (dni, nombre, cursoId) => post('/api/alumnos/ingreso', { dni: Number(dni), nombre, curso_id: Number(cursoId) }),
   elegirPersonaje: (dni, variante) => post(`/api/alumnos/${dni}/personaje`, { variante }),
   estado: (dni) => pedir(`/api/alumnos/${dni}/estado`),

@@ -3,6 +3,7 @@ import { api } from './api'
 import { ElegirPersonaje, IngresoAlumno, Juego, Resumen } from './Alumno'
 import { IngresoDocente, Panel } from './Docente'
 import Escena from './Escena'
+import ModoPrueba from './ModoPrueba'
 
 // Escenas de fondo de las pantallas de entrada (sin avatar del alumno todavia).
 const ESCENAS_ENTRADA = {
@@ -18,6 +19,7 @@ export default function App() {
   const [pantalla, setPantalla] = useState('inicio')
   const [vista, setVista] = useState(null)
   const [sesionDocente, setSesionDocente] = useState(null)
+  const [partida, setPartida] = useState(0) // cambia al reiniciar o saltar (modo prueba)
 
   useEffect(() => {
     const dni = leer('dni')
@@ -72,9 +74,12 @@ export default function App() {
         </div>
       )}
       {pantalla === 'personaje' && <ElegirPersonaje vista={vista} onElegido={irSegunVista} />}
-      {(pantalla === 'intro' || pantalla === 'juego') && <Juego vistaInicial={vista} intro={pantalla === 'intro'} onTerminar={() => setPantalla('resumen')} />}
-      {pantalla === 'resumen' && <Resumen dni={vista.estudiante.dni} vista={vista} onSalir={salir} />}
+      {(pantalla === 'intro' || pantalla === 'juego') && <Juego key={partida} vistaInicial={vista} intro={pantalla === 'intro'} onTerminar={() => setPantalla('resumen')} />}
+      {pantalla === 'resumen' && <Resumen key={partida} dni={vista.estudiante.dni} vista={vista} onSalir={salir} />}
       {pantalla === 'docente' && sesionDocente && <Panel sesion={sesionDocente} onSalir={salir} />}
+      {['intro', 'juego', 'resumen'].includes(pantalla) && vista && (
+        <ModoPrueba dni={vista.estudiante.dni} onCambio={(v) => { setPartida((n) => n + 1); irSegunVista(v) }} />
+      )}
     </main>
   )
 }

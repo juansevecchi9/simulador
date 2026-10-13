@@ -65,7 +65,40 @@ def _curso_por_codigo(db: Session, codigo: str) -> Curso:
 
 @app.get("/api/salud")
 def salud():
-    return {"ok": True}
+    return {"ok": True, "modo_prueba": MODO_PRUEBA}
+
+
+# ----------------------------------------------------------------- modo prueba
+# Herramientas para validar el contenido sin jugar todo de nuevo. Se apagan
+# definiendo la variable de entorno MODO_PRUEBA=0 (antes de la prueba piloto).
+MODO_PRUEBA = os.getenv("MODO_PRUEBA", "1") != "0"
+
+
+class Salto(BaseModel):
+    mes: int = Field(ge=1, le=13)
+
+
+def _solo_prueba():
+    if not MODO_PRUEBA:
+        raise HTTPException(403, "El modo prueba está apagado.")
+
+
+@app.post("/api/prueba/{dni}/reiniciar")
+def prueba_reiniciar(dni: int, db: Session = Depends(get_db)):
+    _solo_prueba()
+    est = _estudiante(db, dni)
+    servicios.reiniciar(db, est)
+    return servicios.vista_alumno(db, est)
+
+
+@app.post("/api/prueba/{dni}/saltar")
+def prueba_saltar(dni: int, body: Salto, db: Session = Depends(get_db)):
+    """Reinicia y responde automaticamente con la opcion acertada hasta el mes pedido."""
+    _solo_prueba()
+    est = _estudiante(db, dni)
+    servicios.reiniciar(db, est)
+    servicios.responder_acertadas_hasta(db, est, body.mes)
+    return servicios.vista_alumno(db, est)
 
 
 # ----------------------------------------------------------------- alumno
