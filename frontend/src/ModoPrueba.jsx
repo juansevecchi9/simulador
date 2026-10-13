@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { api } from './api'
 import { Emo } from './emoji'
 
+const aviso = (err) => alert(err.message === 'Not Found'
+  ? 'El servidor todavía se está actualizando con la última versión. Probá de nuevo en un par de minutos.'
+  : err.message)
+
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 /** Solo para validar el contenido: reiniciar la partida o saltar a un mes. */
@@ -15,7 +19,7 @@ export default function ModoPrueba({ dni, onCambio, onBorrado }) {
 
   async function hacer(accion) {
     setTrabajando(true)
-    try { onCambio(await accion()) } catch (err) { alert(err.message) }
+    try { onCambio(await accion()) } catch (err) { aviso(err) }
     setTrabajando(false)
     setAbierto(false)
   }
@@ -28,7 +32,7 @@ export default function ModoPrueba({ dni, onCambio, onBorrado }) {
           <small>Solo para revisar el contenido. Se apaga antes de la prueba piloto.</small>
           <button className="secundario" disabled={trabajando} onClick={async () => {
             setTrabajando(true)
-            try { await api.borrar(dni); onBorrado() } catch (err) { alert(err.message) }
+            try { await api.borrar(dni); onBorrado() } catch (err) { aviso(err) }
             setTrabajando(false)
           }}>
             Empezar de cero (crear el usuario de nuevo)
