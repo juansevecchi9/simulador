@@ -78,7 +78,7 @@ def test_perfiles_de_jugador():
     assert prudente.terminado and motor.avance_viaje_pct(P, prudente.cuotas_pagadas) == 100
     assert prudente.deuda == 0 and prudente.patrimonio_neto() > 200_000
     assert motor.criterio_pct(prudente) == 100
-    assert incorrecta.patrimonio_neto() < -50_000
+    assert incorrecta.patrimonio_neto() < 0
     assert motor.avance_viaje_pct(P, incorrecta.cuotas_pagadas) < 100
     assert motor.criterio_pct(incorrecta) == 0
 
@@ -98,11 +98,12 @@ def test_cierre_paga_cuota_interes_cancela_deuda_con_lo_que_sobra_e_inflacion():
     assert e.deuda == 0 and round(e.efectivo) == round((200_000 - 90_000 - 10_800) / 1.02)
 
 
-def test_deuda_se_cancela_guardando_una_cuota_de_reserva():
+def test_deuda_se_cancela_con_todo_lo_que_sobra_y_avisa_lo_que_queda():
     e = _estado(150_000, 100_000)
-    motor.cerrar_mes(e, P, 1, 0.0)
-    # 150.000 - 90.000 de cuota = 60.000: menos que la reserva, no se cancela nada
-    assert round(e.deuda) == 108_000 and round(e.efectivo) == 60_000
+    c = motor.cerrar_mes(e, P, 1, 0.0)
+    # 100.000 + 8% = 108.000; 150.000 - 90.000 de cuota = 60.000 que cancelan deuda
+    assert round(e.deuda) == 48_000 and round(e.efectivo) == 0
+    assert any(m["tipo"] == "impago" and "$48.000" in m["texto"] for m in c.movimientos)
 
 
 def test_cuota_impaga_queda_atrasada_y_se_paga_despues():

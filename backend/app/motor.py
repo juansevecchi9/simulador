@@ -50,7 +50,7 @@ SECUENCIA_EJES = {
 
 TOTAL_DECISIONES = 24
 DEUDA_ABIERTA = "Tarjeta y descubierto"
-RESERVA_CUOTAS = 1  # al cierre se cancela deuda con lo que sobra, guardando una cuota
+RESERVA_CUOTAS = 0  # al cierre, todo lo que sobra despues de la cuota cancela la deuda de tarjeta
 
 
 @dataclass
@@ -387,10 +387,9 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
         estado.cuotas_atrasadas -= 1
         pagadas += 1
 
-    # 6. Lo que sobra cancela la deuda abierta (tarjeta, descubierto).
-    # Se guarda una reserva igual a una cuota del viaje para el mes que viene. Si
-    # quedan inversiones que se sacan en el dia, se usan antes: rinden menos de lo
-    # que cobra la tarjeta.
+    # 6. Lo que sobra despues de la cuota cancela la deuda abierta (tarjeta,
+    # descubierto). Si no alcanza, se usan las inversiones que se sacan en el dia:
+    # rinden menos de lo que cobra la tarjeta.
     reserva = p["cuota_viaje"] * RESERVA_CUOTAS
     if estado.de_tipo("deuda_abierta"):
         liquido = sum(x.valor for x in estado.de_tipo("inversion") if x.liquida)
@@ -403,9 +402,16 @@ def cerrar_mes(estado: Estado, p: dict, mes: int, inflacion: float) -> CierreMes
         cancelado = estado.cancelar_deuda_abierta(disponible)
         estado.efectivo -= cancelado
         if cancelado >= 1:
+            queda = estado.deuda_abierta()
             movs.append({"posicion": DEUDA_ABIERTA, "emoji": "💳", "tipo": "pago_deuda", "monto": round(cancelado),
-                         "texto": f"Con lo que te sobró pagaste {pesos_txt(cancelado)} de deuda"
-                         + (" y la cancelaste" if not estado.de_tipo("deuda_abierta") else "")})
+                         "texto": f"Con lo que te sobró después de la cuota pagaste {pesos_txt(cancelado)}"
+                         + (" y la cancelaste toda" if queda < 1 else f". Quedan {pesos_txt(queda)}")})
+    if estado.deuda_abierta() >= 1:
+        queda = estado.deuda_abierta()
+        movs.append({"posicion": DEUDA_ABIERTA, "emoji": "⚠️", "tipo": "impago", "monto": -round(queda),
+                     "texto": f"No te quedó efectivo para cancelarla: siguen {pesos_txt(queda)} de deuda, que el mes "
+                     f"que viene suman {round(100 * p['tasa_deuda_abierta_mensual']):g}% de interés "
+                     f"({pesos_txt(queda * p['tasa_deuda_abierta_mensual'])})"})
 
     # 7. Inflacion: lo que tenes en pesos (plata e inversiones) compra menos. Lo que
     # debes queda fijo en pesos, igual que el sueldo: la inflacion no lo achica.
