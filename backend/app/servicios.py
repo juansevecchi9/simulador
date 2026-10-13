@@ -148,6 +148,7 @@ def encabezado_economia(db: Session) -> dict:
         "cantidad_cuotas": int(p["cantidad_cuotas"]),
         "costo_total_viaje": p["costo_total_viaje"],
         "sena_viaje": p["sena_viaje"],
+        "efectivo_inicial": p["efectivo_inicial"],
         "gastos_fijos_mensuales": p["gastos_fijos_mensuales"],
         "ingreso_base_mensual": p["ingreso_base_mensual"],
         "tasa_deuda_abierta_pct": round(100 * p["tasa_deuda_abierta_mensual"], 1),

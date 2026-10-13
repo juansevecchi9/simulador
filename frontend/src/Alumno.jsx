@@ -563,6 +563,14 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
               texto={`¡${nombre}! Ya pagamos la seña de ${pesos(vista.economia.sena_viaje)} del viaje a Bariloche. Ahora quedan ${vista.economia.cantidad_cuotas} cuotas de ${pesos(vista.economia.cuota_viaje)}, una por mes. ¿Llegamos?`} />
             <ul className="reglas">
               <li><Emo e="🍕" size={26} /><span>Trabajás los fines de semana en la <b>{vista.economia.trabajo.nombre}</b>: cobrás {pesos(vista.economia.ingreso_base_mensual)} por mes y pagás {pesos(vista.economia.gastos_fijos_mensuales)} de gastos fijos.</span></li>
+              <li className="regla-cuenta"><Emo e="💰" size={26} /><span>
+                <b>Por qué arrancás con {pesos(vista.barras.patrimonio_neto)} de patrimonio:</b>
+                <span className="mini-cuenta">Ahorros que tenías: {pesos(vista.economia.efectivo_inicial)}</span>
+                <span className="mini-cuenta">Seña del viaje, ya pagada: -{pesos(vista.economia.sena_viaje)}</span>
+                <span className="mini-cuenta">Sueldo de enero: +{pesos(vista.economia.ingreso_base_mensual)}</span>
+                <span className="mini-cuenta">Gastos fijos de enero: -{pesos(vista.economia.gastos_fijos_mensuales)}</span>
+                Las 12 cuotas no se restan de entrada: se pagan una por mes, en cada cierre.
+              </span></li>
               <li><Emo e="🗓️" size={26} /><span>Cada mes tomás <b>dos decisiones</b>. Al cierre, si te alcanza la plata, la cuota del viaje se paga sola.</span></li>
               <li><Emo e="🏷️" size={26} /><span>Los precios suben <b>{vista.economia.inflacion_mensual_pct}% por mes</b> y el dólar <b>{vista.economia.suba_dolar_mensual_pct}% por mes</b>. Lo que tengas ahorrado en pesos compra {vista.economia.inflacion_mensual_pct}% menos cada mes.</span></li>
               <li><Emo e="💳" size={26} /><span>La deuda de tarjeta suma <b>{vista.economia.tasa_deuda_abierta_pct}% de interés por mes</b>. Al cierre, lo que te sobra después de la cuota la va cancelando.</span></li>

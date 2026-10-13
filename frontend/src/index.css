@@ -277,6 +277,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
 .reglas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .reglas li { display: flex; gap: 12px; align-items: center; background: var(--niebla); border-radius: 14px; padding: 10px 12px; font-size: 15px; }
 
+.regla-cuenta > span { display: flex; flex-direction: column; gap: 3px; }
+.mini-cuenta { background: rgba(255,255,255,.8); border-radius: 8px; padding: 2px 8px; font-variant-numeric: tabular-nums; font-size: 14px; }
+
 /* historial */
 .historial-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; font-family: var(--display); }
 .historial-nav .secundario { padding: 6px 14px; }
