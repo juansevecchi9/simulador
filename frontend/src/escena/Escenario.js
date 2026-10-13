@@ -7,7 +7,7 @@ import { dibujarFinal, dibujarFondo, dibujarRuta, emojiProps, estacion, H, W } f
 
 const EXTRA = ['🪙', '💸', '✨', '⭐', '🎆', '🎊', '❓', '💳', '🚌', '✈️', '☁️', '🌧️',
   // objetos de cada situacion
-  '📋', '👟', '🚲', '🎉', '📈', '🎂', '🏦', '💻', '🏔️', '🐖', '⏱️', '🧾', '📷', '🧮', '🎓', '🚀', '🧺', '🧥', '🔺', '📸', '❤️', '🚀', '📊']
+  '📋', '👟', '🚲', '🎉', '📈', '🎂', '🏦', '💻', '🏔️', '🐖', '⏱️', '🧾', '📷', '🧮', '🎓', '🚀', '🧺', '🧥', '🔺', '🥾', '📸', '❤️', '🚀', '📊']
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const FUENTE = '"Baloo 2 Variable", sans-serif'
 

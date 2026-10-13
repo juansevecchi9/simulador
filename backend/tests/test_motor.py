@@ -78,7 +78,7 @@ def test_perfiles_de_jugador():
     assert prudente.terminado and motor.avance_viaje_pct(P, prudente.cuotas_pagadas) == 100
     assert prudente.deuda == 0 and prudente.patrimonio_neto() > 200_000
     assert motor.criterio_pct(prudente) == 100
-    assert incorrecta.patrimonio_neto() < 0
+    assert incorrecta.patrimonio_neto() < prudente.patrimonio_neto() / 4
     assert motor.avance_viaje_pct(P, incorrecta.cuotas_pagadas) < 100
     assert motor.criterio_pct(incorrecta) == 0
 

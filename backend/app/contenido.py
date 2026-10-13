@@ -425,22 +425,39 @@ ESCENARIOS = [
          "asegurar.\nRecortar gastos es más lento, pero es la única opción en la que tu plata no corre "
          "riesgo."),
     # ------------------------------------------------------------- MES 6 (junio)
-    _esc(6, 1, "inflacion", "parada", None, "🚌",
-         "Anuncian que el mes que viene el colectivo aumenta 20%. Lo usás para ir al colegio y a la pizzería los "
-         "días de lluvia, y gastás unos $40.000 por mes.",
+    _esc(6, 1, "inflacion", "shopping", "cami", "🥾",
+         "{nombre}, tus abuelos te regalaron $50.000 para las botas de nieve de Bariloche, que cuestan justo eso. "
+         "Pagando de contado te hacen 1% de descuento, o las podés pagar en 2 cuotas sin interés de $25.000, la "
+         "primera el mes que viene. En el banco hay un fondo money market que rinde 3% por mes (36% anual) y se "
+         "saca en el día. ¿Qué hacés?",
          [
-             ("🚌 Cargar ahora en la SUBE lo que vas a usar el mes que viene.", 8_000, 0, A,
-              "Te ahorraste $8.000 del aumento: casi una décima parte de una cuota del viaje."),
-             ("⏳ Seguir cargando a medida que lo necesites, como siempre.", 0, 0, R,
-              "Pagaste el colectivo con el aumento: $8.000 más que si hubieras cargado antes."),
-             ("🛍️ Aprovechar y comprar también ropa y otras cosas antes de que suban, aunque algunas no las "
-              "necesites todavía.", -50_000, 0, I,
-              "Compraste cosas que no usaste y se fueron $50.000: más de la mitad de una cuota del viaje."),
+             ("💳 Pagar en 2 cuotas sin interés y dejar los $50.000 en el fondo al 3% por mes hasta pagar cada "
+              "cuota.", 0, 0, A,
+              "Tenés las botas y tus $50.000 siguen rindiendo 3% por mes en el fondo mientras pagás las cuotas: "
+              "las botas te terminan costando $47.750.",
+              [EF(50_000), PRESTAMO("Cuotas de las botas", "🥾", [25_000, 25_000]),
+               INV("Fondo money market para las botas", "💧", 50_000, tasa=0.03, liquida=True)]),
+             ("💵 Pagar de contado con 1% de descuento: $49.500 en el momento.", 0, 0, R,
+              "Tenés las botas y no debés nada, pero pagaste $49.500: $1.750 más de lo que te costaban con las "
+              "cuotas sin interés y la plata rindiendo en el fondo.",
+              [EF(50_000 - 49_500)]),
+             ("🧾 Pagar en 3 cuotas de $18.000 y dejar los $50.000 en el fondo al 3% por mes mientras tanto.",
+              0, 0, I,
+              "Tenés las botas, pero las 3 cuotas suman $54.000: lo que rinde el fondo no alcanza a compensar "
+              "ese interés escondido, y te terminan costando $51.000.",
+              [EF(50_000), PRESTAMO("Cuotas de las botas", "🥾", [18_000, 18_000, 18_000]),
+               INV("Fondo money market para las botas", "💧", 50_000, tasa=0.03, liquida=True)]),
          ],
-         "Gastás $40.000 por mes en colectivo y aumenta 20%.\nCargar ahora: te ahorrás $40.000 × 20% = "
-         "$8.000.\nCargar a medida que lo necesitás: no perdés plata, pero pagás el aumento.\nComprar de "
-         "más antes de un aumento solo conviene con cosas que igual ibas a usar: si no, gastás plata que "
-         "no recuperás."),
+         "Cuando el descuento por pagar de contado es chico y tu plata puede rendir mientras pagás cuotas sin "
+         "interés, conviene financiarte.\n"
+         "El fondo rinde 3% por mes (36% anual ÷ 12).\n"
+         "2 cuotas sin interés + fondo: el primer mes ganás $50.000 × 3% = $1.500. Pagás $25.000 y el segundo mes "
+         "ganás $25.000 × 3% = $750.\n"
+         "Las botas te cuestan $50.000 − $1.500 − $750 = $47.750.\n"
+         "Contado: $50.000 − 1% = $49.500.\n"
+         "3 cuotas de $18.000: pagás $54.000 y el fondo te da $1.500 + $1.005 + $495 = $3.000. Te cuestan "
+         "$54.000 − $3.000 = $51.000.\n"
+         "Con las zapatillas de enero pasaba lo contrario: el descuento era grande (5%) y convenía el contado."),
     _esc(6, 2, "ahorro", "pizzeria", "tano", "🐖",
          "{nombre}, ya vas por la mitad del año y querés llegar a Bariloche con plata para gastar allá. Decidís "
          "empezar a ahorrar todos los meses. ¿Cómo lo hacés?",
