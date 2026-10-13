@@ -6,6 +6,23 @@ const aviso = (err) => alert(err.message === 'Not Found'
   ? 'El servidor todavía se está actualizando con la última versión. Probá de nuevo en un par de minutos.'
   : err.message)
 
+/** Arma un CSV con las decisiones tomadas, para poder reproducir el recorrido. */
+async function descargarCsv(dni) {
+  const h = await api.historial(dni)
+  const comillas = (x) => `"${String(x ?? '').replaceAll('"', '""')}"`
+  const filas = [['decision', 'mes', 'orden', 'opcion_id', 'clasificacion', 'opcion_elegida', 'situacion']]
+  for (const d of h) {
+    const op = d.opciones.find((o) => o.opcion_id === d.elegida_id)
+    filas.push([d.numero, d.mes, d.orden, d.elegida_id, d.clasificacion, op?.texto, d.texto_situacion])
+  }
+  const csv = '\ufeff' + filas.map((f) => f.map(comillas).join(';')).join('\n')
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  a.download = `decisiones-${dni}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 /** Solo para validar el contenido: reiniciar la partida o saltar a un mes. */
@@ -36,6 +53,9 @@ export default function ModoPrueba({ dni, onCambio, onBorrado }) {
             setTrabajando(false)
           }}>
             Empezar de cero (crear el usuario de nuevo)
+          </button>
+          <button className="secundario" disabled={trabajando} onClick={() => descargarCsv(dni).catch(aviso)}>
+            Descargar mis decisiones (CSV)
           </button>
           <div className="modo-prueba-salto">
             <select value={mes} onChange={(e) => setMes(+e.target.value)} aria-label="Mes al que saltar">

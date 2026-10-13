@@ -57,7 +57,7 @@ class HudEscena extends Phaser.Scene {
     const tw = (W - gap * 3) / 4
     const pad = chico ? 7 : 12
     const colores = [C.azul, C.violeta, C.verde, C.sol]
-    const etiquetas = ['Patrimonio neto', 'Viaje', 'Criterio financiero', 'Plata para la cuota']
+    const etiquetas = ['Patrimonio neto', 'Viaje', 'Criterio financiero', 'Efectivo disponible']
     this.tiles = []
     for (let i = 0; i < 4; i++) {
       const x = i * (tw + gap)
@@ -156,7 +156,7 @@ class HudEscena extends Phaser.Scene {
     if (fq > 0) tQ.barra.fillStyle(alcanza ? C.sol : C.warn, 1).fillRoundedRect(tQ.x + tQ.pad, tQ.yBarra, Math.max(tQ.hBarra, ancho(tQ) * fq), tQ.hBarra, tQ.hBarra / 2)
     if (tQ.ayuda) {
       if (b.deuda > 0) tQ.ayuda.setText(`Debés ${pesos(b.deuda)} en total (mirá tu cartera)`).setColor('#a32d2d').setFontStyle('700')
-      else tQ.ayuda.setText(enCierre ? 'Antes de cobrar el sueldo' : alcanza ? 'Te alcanza para la cuota' : 'Todavía no te alcanza').setColor(C.suave).setFontStyle('500')
+      else tQ.ayuda.setText(enCierre ? 'Antes de cobrar el sueldo' : alcanza ? 'Ahora, para pagar la cuota: alcanza' : 'Ahora, para pagar la cuota: no alcanza').setColor(C.suave).setFontStyle('500')
     }
   }
 }
@@ -191,6 +191,6 @@ export default function HudPhaser({ barras, antes, economia, enCierre }) {
   const b = barras
   return (
     <div className="hud-phaser" ref={contenedor} role="img"
-      aria-label={`Patrimonio neto ${pesos(b.patrimonio_neto)}. Viaje: ${b.cuotas_pagadas} de 12 cuotas pagadas. Criterio financiero ${Math.round(b.criterio_financiero_pct)} de 100. Plata para la cuota ${pesos(b.efectivo)}.`} />
+      aria-label={`Patrimonio neto ${pesos(b.patrimonio_neto)}. Viaje: ${b.cuotas_pagadas} de 12 cuotas pagadas. Criterio financiero ${Math.round(b.criterio_financiero_pct)} de 100. Efectivo disponible para la cuota ${pesos(b.efectivo)}.`} />
   )
 }

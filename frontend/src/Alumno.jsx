@@ -238,7 +238,7 @@ function CambiosTablero({ r, previo, economia }) {
   const filas = [
     ['💰', 'Patrimonio neto', firmado(dPn, pesos), dPn,
       partes.length ? `Porque ${partes.join(', ').replace(/, ([^,]*)$/, ' y $1')}. El patrimonio es lo que tenés (plata e inversiones) menos lo que debés.` : 'Esta decisión no movió tu plata, tus inversiones ni tu deuda.'],
-    ['🐷', 'Plata para la cuota', firmado(dEf, pesos), dEf,
+    ['🐷', 'Efectivo disponible para la cuota', firmado(dEf, pesos), dEf,
       falta > 0 ? `Tenés ${pesos(previo.efectivo)} y al cierre se pagan ${pesos(necesita)}: faltan ${pesos(falta)}. Si no llegás, la cuota queda atrasada.`
         : `Tenés ${pesos(previo.efectivo)} y al cierre se pagan ${pesos(necesita)}: por ahora te alcanza.`],
     ['✈️', 'Viaje', cierraAhora ? 'se define ahora' : 'sin cambios', 0,
@@ -460,7 +460,9 @@ function barrasCierre(r) {
     ...r.barras,
     efectivo: c.efectivo_final,
     deuda: c.deuda_final,
-    patrimonio_neto: c.efectivo_final - c.deuda_final,
+    // el patrimonio incluye las inversiones y lo que te deben, no solo el efectivo
+    patrimonio_neto: c.patrimonio_final,
+    inversiones: c.patrimonio_final - c.efectivo_final + c.deuda_final,
     cuotas_pagadas: c.cuotas_pagadas_total,
     cuotas_atrasadas: c.cuotas_atrasadas,
     avance_viaje_pct: c.avance_viaje_pct,
