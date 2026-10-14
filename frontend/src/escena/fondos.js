@@ -33,11 +33,17 @@ function ventana(s, c, est, x, y, w, h) {
   const g = s.add.graphics()
   g.fillStyle(0xffffff, 1).fillRoundedRect(x - 10, y - 10, w + 20, h + 20, 10)
   cielo(g, est, x, y, w, h)
-  // paisaje por la ventana
-  g.fillStyle(est === 'invierno' ? 0xdfe8ef : est === 'otono' ? 0xd99a4e : 0x86c06c, 1)
-  g.fillEllipse(x + w * 0.3, y + h, w * 0.9, h * 0.5)
-  g.fillEllipse(x + w * 0.85, y + h, w * 0.7, h * 0.35)
-  if (est === 'verano') g.fillStyle(0xffd54a, 1).fillCircle(x + w * 0.78, y + h * 0.28, 16)
+  // afuera: sol en verano y nubes blancas, todo dentro del vidrio
+  if (est === 'verano') g.fillStyle(0xffd54a, 1).fillCircle(x + w * 0.8, y + h * 0.24, 15)
+  const nube = (cx, cy, k) => {
+    g.fillStyle(0xffffff, 0.95)
+    g.fillCircle(cx - 16 * k, cy + 4 * k, 11 * k)
+    g.fillCircle(cx, cy - 2 * k, 15 * k)
+    g.fillCircle(cx + 17 * k, cy + 4 * k, 11 * k)
+    g.fillRoundedRect(cx - 27 * k, cy + 2 * k, 54 * k, 13 * k, 6 * k)
+  }
+  nube(x + w * 0.27, y + h * 0.3, 1)
+  nube(x + w * 0.74, y + h * 0.72, 0.8)
   g.lineStyle(6, 0xffffff, 1).lineBetween(x + w / 2, y, x + w / 2, y + h).lineBetween(x, y + h / 2, x + w, y + h / 2)
   c.add(g)
   return g

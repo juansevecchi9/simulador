@@ -182,7 +182,7 @@ def test_criterio_arranca_en_50_y_se_mueve_de_a_poco():
     assert motor.criterio_pct(e) == 50
     for c in ["acertada", "riesgosa", "acertada", "incorrecta"]:
         motor.aplicar_opcion(e, motor.OpcionMotor(0, 0, 0, c, None))
-    assert motor.criterio_pct(e) == 50 + 3 - 1 + 3 - 3
+    assert motor.criterio_pct(e) == round(50 + 50 / 24 * (1 - 1 / 3 + 1 - 1), 1)
     for _ in range(30):
         motor.aplicar_opcion(e, motor.OpcionMotor(0, 0, 0, "incorrecta", None))
     assert motor.criterio_pct(e) == 0

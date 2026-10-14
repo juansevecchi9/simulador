@@ -9,7 +9,7 @@ Chequea, despues de cada decision y de cada cierre:
   - la cascada del cierre: inicio + sueldo + decisiones + rendimientos - intereses - compras - cuotas - inflacion = final;
   - cuotas pagadas + atrasadas = meses cerrados; si quedo una cuota atrasada es porque no alcanzaba;
   - si quedo deuda de tarjeta es porque no quedaba efectivo ni inversiones liquidas;
-  - criterio = 50 + 3 acertadas - riesgosas - 3 incorrectas (entre 0 y 100).
+  - criterio = 50 + 50/24 x (acertadas - incorrectas - riesgosas/3): 100 solo si acierta las 24.
 Ademas compara, escenario por escenario, el resultado final de cada opcion contra la acertada.
 """
 import math
@@ -60,8 +60,8 @@ def revisar_estado(e, donde):
     debe = sum(x["valor"] for x in cart if x["tipo"] in ("deuda_cuotas", "deuda_abierta"))
     if abs((tiene - debe) - b["patrimonio_neto"]) > len(cart) + 1:
         falla("cartera no suma el patrimonio", (donde, tiene, debe, b["patrimonio_neto"]))
-    crit = max(0, min(100, 50 + 3 * e.acertadas - e.riesgosas - 3 * e.incorrectas))
-    if crit != motor.criterio_pct(e):
+    crit = round(50 + 50 / 24 * (e.acertadas - e.incorrectas - e.riesgosas / 3), 1)
+    if abs(crit - motor.criterio_pct(e)) > 0.05 or not 0 <= crit <= 100:
         falla("criterio mal calculado", donde)
 
 

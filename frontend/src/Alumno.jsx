@@ -171,7 +171,9 @@ function Opciones({ opciones, elegida, deshabilitado, onElegir }) {
 
 
 
-const PUNTOS = { acertada: 3, riesgosa: -1, incorrecta: -3 }
+// Cada decision vale 50 / 24 puntos: solo se llega a 100 acertando las 24.
+const PUNTOS = { acertada: 50 / 24, riesgosa: -50 / 72, incorrecta: -50 / 24 }
+const coma = (n, d = 1) => n.toFixed(d).replace('.', ',')
 const firmado = (n, f = (x) => x) => (n > 0 ? `+${f(n)}` : n < 0 ? `-${f(-n)}` : f(0))
 
 /** Las 4 etapas de cada mes, con la actual resaltada. */
@@ -226,7 +228,7 @@ function CambiosTablero({ r, previo, economia }) {
   const dDeuda = Math.round(previo.deuda - a.deuda)
   const dInv = Math.round((previo.inversiones || 0) - (a.inversiones || 0))
   const dPn = Math.round(previo.patrimonio_neto - a.patrimonio_neto)
-  const dCr = Math.round(previo.criterio_financiero_pct - a.criterio_financiero_pct)
+  const dCr = Math.round(10 * (previo.criterio_financiero_pct - a.criterio_financiero_pct)) / 10
   const partes = []
   if (dEf < 0) partes.push(`salieron ${pesos(-dEf)} de tu plata`)
   if (dEf > 0) partes.push(`entraron ${pesos(dEf)} a tu plata`)
@@ -245,8 +247,8 @@ function CambiosTablero({ r, previo, economia }) {
         : `Tenés ${pesos(disp)} disponibles (efectivo e inversiones que sacás en el día) y al cierre se pagan ${pesos(necesita)}: por ahora te alcanza.`],
     ['✈️', 'Viaje', cierraAhora ? 'se define ahora' : 'sin cambios', 0,
       cierraAhora ? 'Con esta decisión se cierra el mes: ahora se ve si la cuota se paga.' : 'Las cuotas se pagan en el cierre del mes, después de tu próxima decisión.'],
-    ['🧭', 'Criterio financiero', dCr ? firmado(dCr) : '0', dCr,
-      `Una decisión ${r.clasificacion} ${dCr === 0 && PUNTOS[r.clasificacion] > 0 ? 'suma 3, pero ya estabas en 100' : `${PUNTOS[r.clasificacion] > 0 ? 'suma' : 'resta'} ${Math.abs(PUNTOS[r.clasificacion])}`}. Acertada +3, riesgosa -1, incorrecta -3.`],
+    ['🧭', 'Criterio financiero', dCr ? `${dCr > 0 ? '+' : '-'}${coma(Math.abs(dCr))}` : '0', dCr,
+      `Una decisión ${r.clasificacion} ${PUNTOS[r.clasificacion] > 0 ? 'suma' : 'resta'} ${coma(Math.abs(PUNTOS[r.clasificacion]))}. Cada decisión vale 50 ÷ 24 = 2,1 puntos (una riesgosa, un tercio): solo llegás a 100 si acertás las 24.`],
   ]
   return (
     <div className="tablero">
@@ -491,7 +493,12 @@ export function Juego({ vistaInicial, onTerminar, intro }) {
   const config = vista.estudiante.variante_personaje
 
   useEffect(() => { inicio.current = Date.now() }, [esc?.escenario_id])
-  useEffect(() => { panel.current?.scrollTo?.({ top: 0, behavior: 'smooth' }) }, [fase, esc?.escenario_id, indiceHist])
+  // Cada paso nuevo (pregunta, resultado, cierre) arranca desde arriba, sin que el alumno
+  // tenga que volver a subir. En celular la que se desplaza es la pagina; en compu, el panel.
+  useEffect(() => {
+    panel.current?.scrollTo?.({ top: 0 })
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [fase, esc?.escenario_id, indiceHist])
 
   const previo = resultado ? barrasPrevias(resultado) : null
   const barras = fase === 'resultado' ? previo : fase === 'cierre' ? barrasCierre(resultado) : vista.barras
@@ -633,6 +640,7 @@ export function Resumen({ dni, vista, onSalir }) {
   const [hist, setHist] = useState(null)
   const [indice, setIndice] = useState(0)
   useEffect(() => { api.resumen(dni).then(setR) }, [dni])
+  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }) }, [])
   async function verHistorial() {
     const h = await api.historial(dni)
     setHist(h); setIndice(0)

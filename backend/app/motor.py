@@ -229,15 +229,18 @@ def avance_viaje_pct(p: dict, cuotas_pagadas: int) -> float:
     return round(100 * pagado / p["costo_total_viaje"], 1)
 
 
-# Criterio financiero: arranca en 50 y se mueve de a poco con cada decision.
+# Criterio financiero: arranca en 50 y cada decision vale 50 / 24 puntos, asi se
+# llega a 100 solo acertando las 24 (y a 0 solo errando las 24). Una riesgosa resta
+# un tercio de eso. Nunca se topea antes de tiempo.
 CRITERIO_INICIAL = 50
-PUNTOS_CRITERIO = {"acertada": 3, "riesgosa": -1, "incorrecta": -3}
+PASO_CRITERIO = 50 / TOTAL_DECISIONES
+PUNTOS_CRITERIO = {"acertada": PASO_CRITERIO, "riesgosa": -PASO_CRITERIO / 3, "incorrecta": -PASO_CRITERIO}
 
 
 def criterio_pct(estado: Estado) -> float:
     valor = (CRITERIO_INICIAL + PUNTOS_CRITERIO["acertada"] * estado.acertadas
              + PUNTOS_CRITERIO["riesgosa"] * estado.riesgosas + PUNTOS_CRITERIO["incorrecta"] * estado.incorrectas)
-    return float(max(0, min(100, valor)))
+    return round(max(0.0, min(100.0, valor)), 1)
 
 
 def ingreso_del_mes(p: dict, mes: int) -> float:

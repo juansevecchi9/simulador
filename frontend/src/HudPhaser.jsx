@@ -1,6 +1,7 @@
 // Barras de indicadores del alumno (HU-005) dibujadas y animadas con Phaser.
-// El lienzo usa el tamaño real de su contenedor (modo RESIZE), asi los textos
-// se ven nitidos y legibles tanto en la computadora como en el celular.
+// El lienzo tiene la densidad real de la pantalla (devicePixelRatio): en un celular
+// con pantalla 3x se dibuja a 3 pixeles por punto, asi nada se ve pixelado. Se
+// dibuja en puntos CSS y la camara amplia por DPR.
 import { useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import { pesos } from './api'
@@ -27,7 +28,8 @@ class HudEscena extends Phaser.Scene {
 
   create() {
     this.listo = true
-    this.scale.on('resize', () => { this.construir(); this.pintar() })
+    this.cameras.main.setOrigin(0, 0).setZoom(DPR)
+    this.scale.on('resize', () => { this.cameras.main.setOrigin(0, 0).setZoom(DPR); this.construir(); this.pintar() })
     const d = this.registry.get('hud')
     if (d) this.actualizar(d)
   }
@@ -50,8 +52,8 @@ class HudEscena extends Phaser.Scene {
   construir() {
     if (!this.d) return
     this.children.removeAll(true)
-    const W = this.scale.width
-    const H = this.scale.height
+    const W = this.scale.width / DPR
+    const H = this.scale.height / DPR
     const chico = H < 90
     const gap = chico ? 6 : 10
     const tw = (W - gap * 3) / 4
@@ -87,15 +89,15 @@ class HudEscena extends Phaser.Scene {
     const cambios = [
       [b.patrimonio_neto - a.patrimonio_neto, (n) => pesos(n)],
       [b.avance_viaje_pct - a.avance_viaje_pct, (n) => `${n}%`],
-      [b.criterio_financiero_pct - a.criterio_financiero_pct, (n) => `${n}`],
+      [b.criterio_financiero_pct - a.criterio_financiero_pct, (n) => `${Math.abs(n).toFixed(1).replace('.', ',')}`, 10],
       [null],
     ]
-    cambios.forEach(([d, f], i) => {
+    cambios.forEach(([d, f, prec = 1], i) => {
       const t = this.tiles[i]
-      const r = Math.round(d ?? 0)
+      const r = Math.round((d ?? 0) * prec) / prec
       if (!r) return
       const sube = r > 0
-      const tx = this.texto(0, 0, `${sube ? '+' : ''}${f(r)}`, t.chico ? 10 : 12, sube ? '#1a7a4c' : '#a32d2d', '800').setOrigin(1, 0)
+      const tx = this.texto(0, 0, `${sube ? '+' : i === 2 ? '-' : ''}${f(r)}`, t.chico ? 10 : 12, sube ? '#1a7a4c' : '#a32d2d', '800').setOrigin(1, 0)
       const fondo = this.add.graphics().fillStyle(sube ? 0xd9f2e3 : 0xfcebeb, 1)
         .fillRoundedRect(-tx.width - 6, -1, tx.width + 12, tx.height + 2, 8)
       // En pantallas anchas el cambio va en el renglon de abajo, a la derecha; en celular, arriba.
@@ -161,6 +163,7 @@ class HudEscena extends Phaser.Scene {
   }
 }
 
+const coma = (n) => n.toFixed(1).replace('.', ',')
 const ES_DEUDA = (t) => t === 'deuda_cuotas' || t === 'deuda_abierta'
 
 /** Desglose de cada indicador, para que no se pierda de donde sale cada numero. */
@@ -198,11 +201,12 @@ function desglose(i, b, cartera, economia) {
       titulo: 'Criterio financiero: arranca en 50',
       filas: [
         fila('Punto de partida', '50'),
-        fila(`${a} acertada${a === 1 ? '' : 's'} × 3`, `+${3 * a}`, 'sube'),
-        fila(`${r} riesgosa${r === 1 ? '' : 's'} × 1`, `-${r}`, r ? 'baja' : ''),
-        fila(`${n} incorrecta${n === 1 ? '' : 's'} × 3`, `-${3 * n}`, n ? 'baja' : ''),
+        fila(`${a} acertada${a === 1 ? '' : 's'} × 2,08`, `+${coma(a * 50 / 24)}`, 'sube'),
+        fila(`${r} riesgosa${r === 1 ? '' : 's'} × 0,69`, `-${coma(r * 50 / 72)}`, r ? 'baja' : ''),
+        fila(`${n} incorrecta${n === 1 ? '' : 's'} × 2,08`, `-${coma(n * 50 / 24)}`, n ? 'baja' : ''),
       ],
       total: fila('Criterio (entre 0 y 100)', `${Math.round(b.criterio_financiero_pct)}`),
+      nota: 'Cada decisión vale 50 ÷ 24 = 2,08 puntos y una riesgosa resta un tercio: solo llegás a 100 si acertás las 24.',
     }
   }
   const liquidas = items.filter((x) => x.tipo === 'inversion' && x.liquida)
@@ -227,16 +231,27 @@ export default function HudPhaser({ barras, antes, economia, enCierre, cartera }
   const juego = useRef(null)
 
   useEffect(() => {
+    const el = contenedor.current
+    const tam = () => [Math.max(1, Math.round(el.clientWidth * DPR)), Math.max(1, Math.round(el.clientHeight * DPR))]
+    const [w, h] = tam()
     juego.current = new Phaser.Game({
       type: Phaser.AUTO,
-      parent: contenedor.current,
+      parent: el,
       transparent: true,
       scene: HudEscena,
-      scale: { mode: Phaser.Scale.RESIZE, width: contenedor.current.clientWidth, height: contenedor.current.clientHeight },
+      // Lienzo a la densidad de la pantalla y achicado por CSS a su tamaño real.
+      scale: { mode: Phaser.Scale.NONE, width: w, height: h, zoom: 1 / DPR },
+      render: { antialias: true, roundPixels: false },
       audio: { noAudio: true },
       banner: false,
     })
-    return () => { juego.current?.destroy(true); juego.current = null }
+    const obs = new ResizeObserver(() => {
+      const [nw, nh] = tam()
+      const g = juego.current
+      if (g && (g.scale.width !== nw || g.scale.height !== nh)) g.scale.resize(nw, nh)
+    })
+    obs.observe(el)
+    return () => { obs.disconnect(); juego.current?.destroy(true); juego.current = null }
   }, [])
 
   // Solo se redibuja cuando cambian los datos (no en cada render de React).
