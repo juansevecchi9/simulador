@@ -54,7 +54,7 @@ class EscenarioC:
 
 class Catalogo:
     def __init__(self, db: Session):
-        self.parametros = {p.clave: p.valor for p in db.scalars(select(ParametroGlobal))}
+        self.parametros = {p.clave: p.valor for p in db.scalars(select(ParametroGlobal)) if p.clave in contenido.PARAMETROS}
         self.inflacion = {i.mes: i.porcentaje for i in db.scalars(select(InflacionMensual))}
         ops_por_esc: dict[int, list[OpcionC]] = defaultdict(list)
         esc_db = {e.escenario_id: e for e in db.scalars(select(Escenario))}

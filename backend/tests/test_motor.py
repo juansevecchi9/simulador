@@ -76,9 +76,12 @@ def test_perfiles_de_jugador():
     incorrecta = motor.simular(P, INF, _ops(lambda e: max(i for i, o in enumerate(e["opciones"])
                                                           if o["clasificacion"] == "incorrecta")))
     assert prudente.terminado and motor.avance_viaje_pct(P, prudente.cuotas_pagadas) == 100
-    assert prudente.deuda == 0 and prudente.patrimonio_neto() > 200_000
+    # Solo quedan las cuotas sin interes de la campera, respaldadas por su fondo (se pagan al volver).
+    assert prudente.deuda_abierta() == 0 and prudente.deuda <= 36_000 and prudente.patrimonio_neto() > 200_000
     assert motor.criterio_pct(prudente) == 100
-    assert incorrecta.patrimonio_neto() < prudente.patrimonio_neto() / 4
+    # Se compara la plata mas lo pagado del viaje: una cuota impaga no es plata ganada.
+    valor = lambda e: e.patrimonio_neto() + P["cuota_viaje"] * e.cuotas_pagadas  # noqa: E731
+    assert valor(incorrecta) < valor(prudente) * 0.6
     assert motor.avance_viaje_pct(P, incorrecta.cuotas_pagadas) < 100
     assert motor.criterio_pct(incorrecta) == 0
 
@@ -182,7 +185,7 @@ def test_criterio_arranca_en_50_y_se_mueve_de_a_poco():
     assert motor.criterio_pct(e) == 50
     for c in ["acertada", "riesgosa", "acertada", "incorrecta"]:
         motor.aplicar_opcion(e, motor.OpcionMotor(0, 0, 0, c, None))
-    assert motor.criterio_pct(e) == round(50 + 50 / 24 * (1 - 1 / 3 + 1 - 1), 1)
+    assert motor.criterio_pct(e) == round(50 + 50 / 24 * (1 - 1 + 1 - 1), 1)
     for _ in range(30):
         motor.aplicar_opcion(e, motor.OpcionMotor(0, 0, 0, "incorrecta", None))
     assert motor.criterio_pct(e) == 0

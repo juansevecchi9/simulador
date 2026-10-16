@@ -202,11 +202,11 @@ function desglose(i, b, cartera, economia) {
       filas: [
         fila('Punto de partida', '50'),
         fila(`${a} acertada${a === 1 ? '' : 's'} × 2,08`, `+${coma(a * 50 / 24)}`, 'sube'),
-        fila(`${r} riesgosa${r === 1 ? '' : 's'} × 0,69`, `-${coma(r * 50 / 72)}`, r ? 'baja' : ''),
+        fila(`${r} riesgosa${r === 1 ? '' : 's'} × 2,08`, `-${coma(r * 50 / 24)}`, r ? 'baja' : ''),
         fila(`${n} incorrecta${n === 1 ? '' : 's'} × 2,08`, `-${coma(n * 50 / 24)}`, n ? 'baja' : ''),
       ],
       total: fila('Criterio (entre 0 y 100)', `${Math.round(b.criterio_financiero_pct)}`),
-      nota: 'Cada decisión vale 50 ÷ 24 = 2,08 puntos y una riesgosa resta un tercio: solo llegás a 100 si acertás las 24.',
+      nota: 'Todas las decisiones valen lo mismo, 50 ÷ 24 = 2,08 puntos: la acertada suma y la riesgosa o incorrecta restan. Solo llegás a 100 si acertás las 24.',
     }
   }
   const liquidas = items.filter((x) => x.tipo === 'inversion' && x.liquida)

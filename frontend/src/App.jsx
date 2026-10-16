@@ -22,6 +22,9 @@ export default function App() {
   const [partida, setPartida] = useState(0) // cambia al reiniciar o saltar (modo prueba)
   // Cada pantalla nueva arranca desde arriba (clave en celular).
   useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }) }, [pantalla, sesionDocente, partida])
+  // Despierta el servidor apenas se abre la página: si estaba dormido (plan gratuito),
+  // arranca mientras el alumno escribe sus datos y no después de tocar "Empezar".
+  useEffect(() => { api.salud().catch(() => {}) }, [])
 
   useEffect(() => {
     const dni = leer('dni')

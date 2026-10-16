@@ -171,8 +171,8 @@ function Opciones({ opciones, elegida, deshabilitado, onElegir }) {
 
 
 
-// Cada decision vale 50 / 24 puntos: solo se llega a 100 acertando las 24.
-const PUNTOS = { acertada: 50 / 24, riesgosa: -50 / 72, incorrecta: -50 / 24 }
+// Cada decision vale lo mismo, 50 / 24 puntos: suma si es acertada y resta si no.
+const PUNTOS = { acertada: 50 / 24, riesgosa: -50 / 24, incorrecta: -50 / 24 }
 const coma = (n, d = 1) => n.toFixed(d).replace('.', ',')
 const firmado = (n, f = (x) => x) => (n > 0 ? `+${f(n)}` : n < 0 ? `-${f(-n)}` : f(0))
 
@@ -248,7 +248,7 @@ function CambiosTablero({ r, previo, economia }) {
     ['✈️', 'Viaje', cierraAhora ? 'se define ahora' : 'sin cambios', 0,
       cierraAhora ? 'Con esta decisión se cierra el mes: ahora se ve si la cuota se paga.' : 'Las cuotas se pagan en el cierre del mes, después de tu próxima decisión.'],
     ['🧭', 'Criterio financiero', dCr ? `${dCr > 0 ? '+' : '-'}${coma(Math.abs(dCr))}` : '0', dCr,
-      `Una decisión ${r.clasificacion} ${PUNTOS[r.clasificacion] > 0 ? 'suma' : 'resta'} ${coma(Math.abs(PUNTOS[r.clasificacion]))}. Cada decisión vale 50 ÷ 24 = 2,1 puntos (una riesgosa, un tercio): solo llegás a 100 si acertás las 24.`],
+      `Una decisión ${r.clasificacion} ${PUNTOS[r.clasificacion] > 0 ? 'suma' : 'resta'} ${coma(Math.abs(PUNTOS[r.clasificacion]))}. Todas valen lo mismo, 50 ÷ 24 = 2,1 puntos: la acertada suma y la riesgosa o incorrecta restan. Solo llegás a 100 si acertás las 24.`],
   ]
   return (
     <div className="tablero">
@@ -308,6 +308,25 @@ function CascadaMes({ c }) {
 
 /** Parte un texto largo en parrafos cortos (una idea por parrafo). */
 function Parrafos({ texto }) {
+  // Explicacion por bloques (separados por una linea en blanco): cada bloque que empieza
+  // con un emoji es una opcion y va en su propia tarjeta; los demas son texto corrido.
+  if ((texto || '').includes('\n\n')) {
+    return (
+      <div className="parrafos">
+        {texto.split(/\n\n+/).map((bloque, i) => {
+          const [primera, ...resto] = bloque.split('\n')
+          const [e, titulo] = separarEmoji(primera)
+          if (!e) return bloque.split('\n').map((l, k) => <p key={`${i}-${k}`}>{l}</p>)
+          return (
+            <div className="tarjeta-opcion" key={i}>
+              <p className="tarjeta-titulo"><Emo e={e} size={22} /><b>{titulo}</b></p>
+              {resto.map((l, k) => <p key={k} className={/=/.test(l) ? 'calc' : ''}>{l}</p>)}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
   // Si el texto trae renglones (cuentas), cada renglon va aparte; si no, se parte por oraciones.
   if ((texto || '').includes('\n')) {
     return (

@@ -169,6 +169,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outli
 .parrafos { display: flex; flex-direction: column; gap: 10px; }
 .parrafos p { margin: 0; font-size: 15.5px; line-height: 1.55; }
 .porque .parrafos { gap: 6px; }
+.porque .tarjeta-opcion { background: rgba(255,255,255,.8); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; border-left: 3px solid var(--sol); }
+.porque .tarjeta-opcion .tarjeta-titulo { display: flex; align-items: center; gap: 8px; }
+.porque .tarjeta-opcion .tarjeta-titulo b { font-weight: 700; }
+.porque .tarjeta-opcion p.calc { font-variant-numeric: tabular-nums; }
 .porque .parrafos p.cuenta { background: rgba(255,255,255,.75); border-radius: 10px; padding: 6px 10px; font-variant-numeric: tabular-nums; border-left: 3px solid var(--sol); }
 
 /* cierre del mes */
