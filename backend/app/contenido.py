@@ -460,14 +460,14 @@ ESCENARIOS = [
               [EF(-50_000), PRESTAMO("Préstamo preaprobado de Rayo", "📲", [25_000] * 6, recibido=120_000)]),
          ],
          "Si ya tenés la plata, la pregunta es: ¿pago ahora, o pago en cuotas y mientras tanto pongo mi plata a rendir?\n"
-         "Financiarte conviene solo si tu plata rinde más de lo que te cobra la deuda. Una inversión segura rinde 3% por mes.\n"
+         "Financiarte conviene solo si tu plata rinde más de lo que te cobra la deuda. Una inversión segura rinde aproximadamente 3% por mes.\n"
          "\n"
          "🐷 Con tus ahorros\n"
          "Pagás $50.000 hoy y no quedás debiendo.\n"
          "\n"
          "💳 Con la tarjeta en 3 cuotas\n"
          "$18.000 × 3 = $54.000, o sea $4.000 más.\n"
-         "Esas cuotas te cobran cerca de 4% por mes: más de lo que rinde una inversión segura (3%) y el doble de lo que suben los precios (2%).\n"
+         "Esas cuotas te cobran cerca de 4% por mes: más de lo que rinde una inversión segura (aproximadamente 3%) y el doble de lo que suben los precios (2%).\n"
          "Probalo: dejás los $50.000 invertidos al 3% y de ahí pagás cada cuota. El resultado de cada renglón es lo que te queda invertido después de pagar la cuota de ese mes.\n"
          "Mes 1: $50.000 × 1,03 − $18.000 = te quedan $33.500.\n"
          "Mes 2: $33.500 × 1,03 − $18.000 = te quedan $16.505.\n"
