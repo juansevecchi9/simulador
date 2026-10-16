@@ -282,12 +282,13 @@ ESCENARIOS = [
          "\n"
          "🐷 Con tus ahorros\n"
          "Pagás $50.000, sin intereses.\n"
-         "Lo único que dejás de ganar es lo que esa plata rendiría invertida: en algo seguro, como un plazo fijo, cerca de 3% por mes. $50.000 × 3% = $1.500.\n"
+         "Lo único que dejás de ganar es lo que esa plata rendiría invertida: en algo seguro, como un plazo fijo, 3% por mes. $50.000 × 3% = $1.500.\n"
          "\n"
          "🤝 Con el tío Rubén\n"
          "10% de $50.000 = $5.000. Le devolvés $55.000 en un mes.\n"
-         "Ese 10% por mes es 5 veces lo que suben los precios (2%) y más de 3 veces lo que rinde una inversión segura (cerca de 3%).\n"
-         "O sea: aunque guardes tus ahorros y los pongas a rendir mientras le debés al tío, no hay inversión que te dé $5.000 en un mes con $50.000. Perdés la diferencia: $5.000 − $1.500 = $3.500.\n"
+         "Ese 10% por mes es 5 veces lo que suben los precios (2%) y más de 3 veces lo que rinde una inversión segura (3%).\n"
+         "O sea: aunque guardes tus ahorros y los pongas a rendir mientras le debés al tío, no hay inversión que te dé $5.000 en un mes con $50.000.\n"
+         "Lo más que podés ganar invirtiendo tus $50.000 al 3% es $50.000 × 3% = $1.500. Le pagás $5.000 al tío y ganás $1.500: perdés la diferencia, $5.000 − $1.500 = $3.500.\n"
          "\n"
          "📱 Con PrestaYa\n"
          "El primer mes sin interés esconde un cargo de $15.000.\n"
@@ -459,19 +460,19 @@ ESCENARIOS = [
               [EF(-50_000), PRESTAMO("Préstamo preaprobado de Rayo", "📲", [25_000] * 6, recibido=120_000)]),
          ],
          "Si ya tenés la plata, la pregunta es: ¿pago ahora, o pago en cuotas y mientras tanto pongo mi plata a rendir?\n"
-         "Financiarte conviene solo si tu plata rinde más de lo que te cobra la deuda. Una inversión segura rinde cerca de 2% por mes, lo mismo que suben los precios.\n"
+         "Financiarte conviene solo si tu plata rinde más de lo que te cobra la deuda. Una inversión segura rinde 3% por mes.\n"
          "\n"
          "🐷 Con tus ahorros\n"
          "Pagás $50.000 hoy y no quedás debiendo.\n"
          "\n"
          "💳 Con la tarjeta en 3 cuotas\n"
          "$18.000 × 3 = $54.000, o sea $4.000 más.\n"
-         "Esas cuotas te cobran cerca de 4% por mes: el doble de lo que suben los precios y de lo que rinde una inversión segura.\n"
-         "Probalo: dejás los $50.000 invertidos al 2% y de ahí pagás cada cuota.\n"
-         "Mes 1: $50.000 × 1,02 − $18.000 = $33.000.\n"
-         "Mes 2: $33.000 × 1,02 − $18.000 = $15.660.\n"
-         "Mes 3: $15.660 × 1,02 − $18.000 = −⁠$2.027.\n"
-         "Te faltan $2.027: tu plata rinde menos de lo que cuesta la deuda, así que te conviene usarla hoy.\n"
+         "Esas cuotas te cobran cerca de 4% por mes: más de lo que rinde una inversión segura (3%) y el doble de lo que suben los precios (2%).\n"
+         "Probalo: dejás los $50.000 invertidos al 3% y de ahí pagás cada cuota. El resultado de cada renglón es lo que te queda invertido después de pagar la cuota de ese mes.\n"
+         "Mes 1: $50.000 × 1,03 − $18.000 = te quedan $33.500.\n"
+         "Mes 2: $33.500 × 1,03 − $18.000 = te quedan $16.505.\n"
+         "Mes 3: $16.505 × 1,03 − $18.000 = te quedan −⁠$1.000.\n"
+         "Te faltan $1.000 para la última cuota: tu plata rinde menos de lo que cuesta la deuda, así que te conviene usarla hoy.\n"
          "\n"
          "📲 Con el préstamo preaprobado\n"
          "$25.000 × 6 = $150.000 por $120.000 que te dieron: $30.000 de intereses, cerca de 7% por mes.\n"
@@ -513,16 +514,16 @@ ESCENARIOS = [
     _esc(6, 1, "inflacion", "shopping", "cami", "🥾",
          "{nombre}, tus abuelos te regalaron $50.000 para las botas de nieve de Bariloche, que cuestan justo eso. "
          "Pagando de contado te hacen 1% de descuento, o las podés pagar en 2 cuotas sin interés de $25.000, la "
-         "primera a fin de este mes. En el banco hay un fondo money market que rinde 3% por mes (36% anual) y se "
-         "saca en el día. ¿Qué hacés?",
+         "primera a fin de este mes. Hay un fondo de inversión que rinde 3% por mes (36% anual) y tiene "
+         "liquidación inmediata si necesitás la plata. ¿Qué hacés?",
          [
              ("💳 Pagar en 2 cuotas sin interés y dejar los $50.000 en el fondo al 3% por mes hasta pagar cada "
               "cuota.", 0, 0, A,
               "Tenés las botas y tus $50.000 siguen rindiendo 3% por mes en el fondo mientras pagás las cuotas: "
               "las botas te terminan costando $47.705.",
               [EF(50_000), PRESTAMO("Cuotas de las botas", "🥾", [25_000, 25_000],
-                        paga_con="Fondo money market para las botas", desde=0),
-               INV("Fondo money market para las botas", "💧", 50_000, tasa=0.03, liquida=True)]),
+                        paga_con="Fondo de inversión para las botas", desde=0),
+               INV("Fondo de inversión para las botas", "💧", 50_000, tasa=0.03, liquida=True)]),
              ("💵 Pagar de contado con 1% de descuento: $49.500 en el momento.", 0, 0, R,
               "Tenés las botas y no debés nada, pero pagaste $49.500: $1.795 más de lo que te costaban con las "
               "cuotas sin interés y la plata rindiendo en el fondo.",
@@ -532,11 +533,11 @@ ESCENARIOS = [
               "Tenés las botas, pero las 3 cuotas suman $54.000: lo que rinde el fondo no alcanza a compensar "
               "ese interés escondido, y te terminan costando $51.000.",
               [EF(50_000), PRESTAMO("Cuotas de las botas", "🥾", [18_000, 18_000, 18_000],
-                        paga_con="Fondo money market para las botas", desde=0),
-               INV("Fondo money market para las botas", "💧", 50_000, tasa=0.03, liquida=True)]),
+                        paga_con="Fondo de inversión para las botas", desde=0),
+               INV("Fondo de inversión para las botas", "💧", 50_000, tasa=0.03, liquida=True)]),
          ],
          "Cuando el descuento por pagar de contado es chico y tu plata puede rendir mientras pagás cuotas sin interés, conviene financiarte.\n"
-         "La idea: en vez de dar los $50.000 hoy, los dejás en un fondo que rinde 3% por mes (36% anual ÷ 12) y de ahí vas sacando cada cuota.\n"
+         "La idea: en vez de dar los $50.000 hoy, los dejás en un fondo de inversión que rinde 3% por mes (36% anual ÷ 12) y de ahí vas sacando cada cuota.\n"
          "\n"
          "💳 2 cuotas sin interés y la plata en el fondo\n"
          "Hoy ponés los $50.000 en el fondo.\n"
@@ -851,9 +852,9 @@ ESCENARIOS = [
          "Si ponés la plata prestada en algo que puede bajar, como acciones o cripto, podés terminar debiendo plata que ya no tenés.\n"
          "\n"
          "🏦 Plazo fijo al 2,5% por mes\n"
-         "Préstamo: $100.000 × 1,5% = $1.500 por mes. En 2 meses, $3.000.\n"
-         "Plazo fijo: $100.000 × 1,025 × 1,025 = $105.063.\n"
-         "Te queda $105.063 − $100.000 − $3.000 = $2.063.\n"
+         "Lo que te devuelve el plazo fijo: $100.000 × 1,025 × 1,025 = $105.063.\n"
+         "Lo que debés: $100.000 de capital + $3.000 de interés ($100.000 × 1,5% = $1.500 por mes, durante 2 meses) = $103.000.\n"
+         "Lo que te queda: $105.063 − $103.000 = $2.063. Es plata que ganaste sin hacer nada más que invertir el préstamo que te dieron.\n"
          "\n"
          "🙅 No tomarlo\n"
          "No te hace perder plata, pero deja pasar la diferencia.\n"
@@ -892,7 +893,6 @@ ESCENARIOS = [
          "🎓 El curso que garantiza 20% por mes\n"
          "Nadie puede garantizar un 20% por mes, y es imposible sostenerlo. Hacé la cuenta: 1,2¹² = 8,9.\n"
          "Significa multiplicar tu plata casi por 9 en un año: con $65.000 tendrías $579.540 en diciembre, y en dos años, más de $5 millones.\n"
-         "Ni los mejores inversores del mundo ganan eso: en un año muy bueno ganan 20% en todo el año, no por mes.\n"
          "Quien te promete eso gana con lo que le pagás por el curso, no con lo que te enseña."),
     # ------------------------------------------------------------- MES 12 (diciembre)
     _esc(12, 1, "inflacion", "shopping", "cami", "🧥",
